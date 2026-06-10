@@ -20,10 +20,6 @@ public class JwtService {
     @Value("${app.jwt.secret}")
     private String jwtSecret;
 
-    /**
-     * Token expiration in milliseconds.
-     * Example: 86400000 = 24 hours
-     */
     @Value("${app.jwt.expiration}")
     private long jwtExpiration;
 

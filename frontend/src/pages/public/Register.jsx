@@ -107,7 +107,7 @@ export default function Register() {
             <input
               id="firstName" type="text" name="firstName"
               value={formData.firstName} onChange={handleChange}
-              placeholder="Jane" autoComplete="given-name"
+              placeholder="Vipul" autoComplete="given-name"
               className={`${INPUT_BASE} ${errors.firstName ? INPUT_ERR : INPUT_OK}`}
             />
           </Field>
@@ -115,7 +115,7 @@ export default function Register() {
             <input
               id="lastName" type="text" name="lastName"
               value={formData.lastName} onChange={handleChange}
-              placeholder="Doe" autoComplete="family-name"
+              placeholder="Sahdev" autoComplete="family-name"
               className={`${INPUT_BASE} ${errors.lastName ? INPUT_ERR : INPUT_OK}`}
             />
           </Field>

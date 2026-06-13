@@ -1,234 +1,222 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Package, ArrowRight, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { getUserOrders } from "../../api/orderApi";
 
 const getStoredUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user")) || null;
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(localStorage.getItem("user")) || null; } catch { return null; }
 };
 
-const formatCurrency = (amount) => {
-  if (amount == null) return "₹0.00";
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-  }).format(amount);
+const formatCurrency = (amount) =>
+  amount == null
+    ? "₹0.00"
+    : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
+
+const formatDate = (date) =>
+  date ? new Date(date).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "-";
+
+const STATUS_STYLES = {
+  DELIVERED: "bg-emerald-100 text-emerald-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
+  SUCCESS:   "bg-emerald-100 text-emerald-700",
+  PAID:      "bg-emerald-100 text-emerald-700",
+  PENDING:   "bg-amber-100 text-amber-700",
+  PROCESSING:"bg-amber-100 text-amber-700",
+  PLACED:    "bg-amber-100 text-amber-700",
+  CONFIRMED: "bg-amber-100 text-amber-700",
+  CANCELLED: "bg-rose-100 text-rose-700",
+  FAILED:    "bg-rose-100 text-rose-700",
+  REJECTED:  "bg-rose-100 text-rose-700",
+  SHIPPED:   "bg-blue-100 text-blue-700",
+  DISPATCHED:"bg-blue-100 text-blue-700",
 };
+const getBadgeClass = (s = "") => STATUS_STYLES[s.toUpperCase()] ?? "bg-slate-100 text-slate-600";
 
-const formatDate = (date) => {
-  if (!date) return "-";
-  return new Date(date).toLocaleString("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-};
-
-const getBadgeClass = (status = "") => {
-  const value = status.toUpperCase();
-
-  if (["DELIVERED", "COMPLETED", "SUCCESS", "PAID"].includes(value)) {
-    return "bg-emerald-100 text-emerald-700";
-  }
-
-  if (["PENDING", "PROCESSING", "PLACED"].includes(value)) {
-    return "bg-amber-100 text-amber-700";
-  }
-
-  if (["CANCELLED", "FAILED", "REJECTED"].includes(value)) {
-    return "bg-red-100 text-red-700";
-  }
-
-  if (["SHIPPED", "DISPATCHED"].includes(value)) {
-    return "bg-blue-100 text-blue-700";
-  }
-
-  return "bg-slate-100 text-slate-700";
-};
-
-export default function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const user = getStoredUser();
-
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        if (!user?.id && !user?.userId) {
-          setError("User not found. Please login again.");
-          setLoading(false);
-          return;
-        }
-
-        const userId = user.id || user.userId;
-        const data = await getUserOrders(userId);
-        setOrders(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(
-          err?.response?.data?.message || "Failed to load your orders."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, [user?.id, user?.userId]);
-
+function OrderSkeleton() {
   return (
-    <div className="container py-4">
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <div>
-          <h2 className="fw-bold mb-1">My Orders</h2>
-          <p className="text-muted mb-0">
-            Track your recent purchases and order progress.
-          </p>
-        </div>
-
-        <Link to="/products" className="btn btn-primary">
-          Continue Shopping
-        </Link>
-      </div>
-
-      {loading && (
-        <div className="text-center py-5">
-          <div
-            className="spinner-border text-primary mb-3"
-            role="status"
-            aria-hidden="true"
-          />
-          <p className="mb-0 text-muted">Loading your orders...</p>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && orders.length === 0 && (
-        <div className="card border-0 shadow-sm">
-          <div className="card-body text-center py-5">
-            <h4 className="mb-2">No orders yet</h4>
-            <p className="text-muted mb-4">
-              You haven’t placed any orders yet. Start exploring products and
-              place your first order.
-            </p>
-            <Link to="/products" className="btn btn-outline-primary">
-              Browse Products
-            </Link>
+    <div className="space-y-4">
+      {[1,2].map(i => (
+        <div key={i} className="animate-pulse rounded-2xl bg-white p-6 shadow-sm space-y-4">
+          <div className="flex justify-between">
+            <div className="space-y-2">
+              <div className="h-4 w-40 rounded bg-slate-100" />
+              <div className="h-3 w-28 rounded bg-slate-100" />
+            </div>
+            <div className="h-4 w-20 rounded bg-slate-100" />
+          </div>
+          <div className="h-px bg-slate-100" />
+          <div className="flex gap-4">
+            <div className="h-14 w-14 rounded-xl bg-slate-100" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3 w-48 rounded bg-slate-100" />
+              <div className="h-3 w-32 rounded bg-slate-100" />
+            </div>
           </div>
         </div>
-      )}
+      ))}
+    </div>
+  );
+}
 
-      {!loading && !error && orders.length > 0 && (
-        <div className="row g-4">
-          {orders.map((order) => (
-            <div className="col-12" key={order.id || order.orderNumber}>
-              <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                  <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-                    <div>
-                      <h5 className="mb-1">
-                        Order #{order.orderNumber || order.id}
-                      </h5>
-                      <p className="text-muted mb-0">
-                        Placed on {formatDate(order.createdAt)}
-                      </p>
-                    </div>
+export default function Orders() {
+  const [orders,  setOrders]  = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState("");
+  const user = getStoredUser();
 
-                    <div className="text-md-end">
-                      <h6 className="fw-bold mb-2">
-                        {formatCurrency(order.totalAmount)}
-                      </h6>
-                      <div className="d-flex flex-wrap gap-2 justify-content-md-end">
-                        <span className={`badge ${getBadgeClass(order.orderStatus)}`}>
-                          {order.orderStatus || "UNKNOWN"}
-                        </span>
-                        <span className={`badge ${getBadgeClass(order.paymentStatus)}`}>
-                          {order.paymentStatus || "UNKNOWN"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      if (!user?.id && !user?.userId) {
+        setError("User not found. Please login again.");
+        return;
+      }
+      const data = await getUserOrders(user.id || user.userId);
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to load your orders.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                  {Array.isArray(order.items) && order.items.length > 0 && (
-                    <div className="table-responsive">
-                      <table className="table align-middle">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Product</th>
-                            <th>Price</th>
-                            <th>Qty</th>
-                            <th>Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items.map((item) => (
-                            <tr key={item.orderItemId || item.productId}>
-                              <td>
-                                <div className="d-flex align-items-center gap-3">
-                                  <img
-                                    src={
-                                      item.productImageUrl ||
-                                      "https://via.placeholder.com/60x60?text=No+Image"
-                                    }
-                                    alt={item.productName || "Product"}
-                                    width="60"
-                                    height="60"
-                                    className="rounded border"
-                                    style={{ objectFit: "cover" }}
-                                  />
-                                  <div>
-                                    <div className="fw-semibold">
-                                      {item.productName}
-                                    </div>
-                                    <small className="text-muted">
-                                      Product ID: {item.productId}
-                                    </small>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>{formatCurrency(item.price)}</td>
-                              <td>{item.quantity}</td>
-                              <td>{formatCurrency(item.lineTotal)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+  useEffect(() => { fetchOrders(); }, [user?.id, user?.userId]);
 
-                  {order.shippingAddressSnapshot && (
-                    <div className="mt-3">
-                      <h6 className="mb-1">Shipping Address</h6>
-                      <p className="text-muted mb-0">
-                        {order.shippingAddressSnapshot}
-                      </p>
-                    </div>
-                  )}
+  return (
+    <section className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">My Orders</h1>
+          <p className="mt-1 text-sm text-slate-500">Track your recent purchases and order progress.</p>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={fetchOrders}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </button>
+          <Link
+            to="/products"
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
+          >
+            Continue Shopping <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
 
-                  <div className="mt-3 d-flex flex-wrap gap-2">
-                    <Link
-                      to={`/orders/${order.id}`}
-                      className="btn btn-sm btn-outline-primary"
-                    >
-                      View Details
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Loading */}
+      {loading && <OrderSkeleton />}
+
+      {/* Error */}
+      {!loading && error && (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
-    </div>
+
+      {/* Empty */}
+      {!loading && !error && orders.length === 0 && (
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+            <Package className="h-7 w-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-800">No orders yet</h3>
+            <p className="mt-1 max-w-xs text-sm text-slate-500">
+              You haven&apos;t placed any orders yet. Start exploring products and place your first order.
+            </p>
+          </div>
+          <Link
+            to="/products"
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100"
+          >
+            Browse Products <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+
+      {/* Orders list */}
+      {!loading && !error && orders.length > 0 && (
+        <div className="space-y-4">
+          {orders.map((order) => {
+            const orderId = order.id || order.orderNumber;
+            return (
+              <article key={orderId} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:shadow-md">
+                {/* Order header */}
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Order</p>
+                    <p className="mt-0.5 text-sm font-bold text-slate-900">
+                      #{order.orderNumber || order.id}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400">{formatDate(order.createdAt)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-bold text-slate-900">{formatCurrency(order.totalAmount)}</p>
+                    <div className="mt-1.5 flex flex-wrap justify-end gap-1.5">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass(order.orderStatus)}`}>
+                        {order.orderStatus || "UNKNOWN"}
+                      </span>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass(order.paymentStatus)}`}>
+                        {order.paymentStatus || "UNKNOWN"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items */}
+                {Array.isArray(order.items) && order.items.length > 0 && (
+                  <div className="divide-y divide-slate-50">
+                    {order.items.map((item) => (
+                      <div key={item.orderItemId || item.productId}
+                           className="flex items-center gap-3 px-5 py-3">
+                        <img
+                          src={item.productImageUrl || "https://placehold.co/56x56?text=N/A"}
+                          alt={item.productName || "Product"}
+                          width={56} height={56}
+                          loading="lazy"
+                          className="h-14 w-14 shrink-0 rounded-xl border border-slate-100 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-800">{item.productName}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            Qty {item.quantity} × {formatCurrency(item.price)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold text-slate-700">
+                          {formatCurrency(item.lineTotal)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Shipping snapshot */}
+                {order.shippingAddressSnapshot && (
+                  <div className="border-t border-slate-50 bg-slate-50/60 px-5 py-3">
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-0.5">Shipping to</p>
+                    <p className="text-xs text-slate-600">{order.shippingAddressSnapshot}</p>
+                  </div>
+                )}
+
+                {/* Footer actions */}
+                <div className="flex items-center justify-end border-t border-slate-100 px-5 py-3">
+                  <Link
+                    to={`/orders/${order.id}`}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    View Details <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

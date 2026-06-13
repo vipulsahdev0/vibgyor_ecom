@@ -4,7 +4,7 @@ export const TOKEN_KEY = "token";
 export const USER_KEY = "user";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  baseURL: import.meta.env.VITE_API_URL || VITE_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

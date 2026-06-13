@@ -1,438 +1,420 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import {
-  getCategories,
-  createCategory,
-  updateCategory,
-  updateCategoryStatus,
+  Tag, Plus, Pencil, RefreshCw, AlertCircle,
+  Search, Loader2, ToggleLeft, ToggleRight, PackageSearch, X,
+} from "lucide-react";
+import {
+  getCategories, createCategory, updateCategory, updateCategoryStatus,
 } from "../../api/categoryApi";
 import CategoryForm from "../../components/categories/CategoryForm";
 
-export default function AdminCategories() {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [formLoading, setFormLoading] = useState(false);
-  const [statusLoadingId, setStatusLoadingId] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState("");
+const STATUS_STYLES = {
+  ACTIVE:   "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  INACTIVE: "bg-rose-50    text-rose-700    ring-1 ring-inset ring-rose-200",
+};
 
-  const totalCategories = useMemo(() => categories.length, [categories]);
-  const activeCategories = useMemo(
-    () => categories.filter((category) => category.status === "ACTIVE").length,
-    [categories]
+function TableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="divide-y divide-slate-100">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-slate-100" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3.5 w-32 rounded bg-slate-100" />
+              <div className="h-3 w-56 rounded bg-slate-100" />
+            </div>
+            <div className="h-5 w-12 rounded-full bg-slate-100" />
+            <div className="h-5 w-16 rounded-full bg-slate-100" />
+            <div className="flex gap-2">
+              <div className="h-8 w-16 rounded-xl bg-slate-100" />
+              <div className="h-8 w-24 rounded-xl bg-slate-100" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
+}
 
-  const fetchCategories = useCallback(async () => {
+function StatCard({ title, value, accent, Icon }) {
+  const map = {
+    slate:   { bg: "bg-slate-50",   icon: "text-slate-500",   val: "text-slate-900"   },
+    emerald: { bg: "bg-emerald-50", icon: "text-emerald-500", val: "text-emerald-700" },
+    rose:    { bg: "bg-rose-50",    icon: "text-rose-500",    val: "text-rose-700"    },
+    indigo:  { bg: "bg-indigo-50",  icon: "text-indigo-500",  val: "text-indigo-700"  },
+  };
+  const c = map[accent] ?? map.slate;
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</p>
+          <p className={`mt-2 text-2xl font-black tabular-nums ${c.val}`}>{value}</p>
+        </div>
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.bg}`}>
+          <Icon className={`h-4.5 w-4.5 ${c.icon}`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminCategories() {
+  const [categories,      setCategories]      = useState([]);
+  const [loading,         setLoading]         = useState(true);
+  const [formLoading,     setFormLoading]     = useState(false);
+  const [statusLoadingId, setStatusLoadingId] = useState(null);
+  const [selectedCategory,setSelectedCategory]= useState(null);
+  const [showForm,        setShowForm]        = useState(false);
+  const [error,           setError]           = useState("");
+  const [search,          setSearch]          = useState("");
+  const [filterStatus,    setFilterStatus]    = useState("ALL");
+  const [refreshing,      setRefreshing]      = useState(false);
+
+  const fetchCategories = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true); else setRefreshing(true);
       setError("");
       const data = await getCategories();
       setCategories(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setError("Failed to load categories.");
       toast.error("Failed to load categories");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  const closeForm = () => {
-    setSelectedCategory(null);
-    setShowForm(false);
-  };
+  const closeForm = () => { setSelectedCategory(null); setShowForm(false); };
+
+  const openCreate = () => { setSelectedCategory(null); setShowForm(true); };
+  const openEdit   = (cat) => { setSelectedCategory(cat); setShowForm(true); };
 
   const handleCreate = async (data) => {
     try {
       setFormLoading(true);
-
       await createCategory({
-        name: data.name?.trim(),
+        name:        data.name?.trim(),
         description: data.description?.trim() || "",
-        imageUrl: data.imageUrl?.trim() || "",
+        imageUrl:    data.imageUrl?.trim()    || "",
       });
-
-      toast.success("Category created successfully");
-      await fetchCategories();
+      toast.success("Category created");
+      await fetchCategories(true);
       closeForm();
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error?.response?.data?.message || "Failed to create category"
-      );
-    } finally {
-      setFormLoading(false);
-    }
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to create category");
+    } finally { setFormLoading(false); }
   };
 
   const handleUpdate = async (data) => {
     if (!selectedCategory?.id) return;
-
     try {
       setFormLoading(true);
-
       await updateCategory(selectedCategory.id, {
-        name: data.name?.trim(),
+        name:        data.name?.trim(),
         description: data.description?.trim() || "",
-        imageUrl: data.imageUrl?.trim() || "",
+        imageUrl:    data.imageUrl?.trim()    || "",
       });
-
-      toast.success("Category updated successfully");
-      await fetchCategories();
+      toast.success("Category updated");
+      await fetchCategories(true);
       closeForm();
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error?.response?.data?.message || "Failed to update category"
-      );
-    } finally {
-      setFormLoading(false);
-    }
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to update category");
+    } finally { setFormLoading(false); }
   };
 
   const handleStatus = async (category) => {
     const nextStatus = category.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    const actionText = nextStatus === "INACTIVE" ? "deactivate" : "activate";
-
-    const confirmed = window.confirm(
-      `Are you sure you want to ${actionText} "${category.name}"?`
-    );
-
-    if (!confirmed) return;
-
+    if (!window.confirm(`${nextStatus === "INACTIVE" ? "Deactivate" : "Activate"} "${category.name}"?`)) return;
     try {
       setStatusLoadingId(category.id);
-
       await updateCategoryStatus(category.id, nextStatus);
-
-      setCategories((prev) =>
-        prev.map((item) =>
-          item.id === category.id
-            ? { ...item, status: nextStatus }
-            : item
-        )
-      );
-
-      toast.success("Category status updated");
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error?.response?.data?.message || "Failed to update status"
-      );
-    } finally {
-      setStatusLoadingId(null);
-    }
+      setCategories(prev => prev.map(c => c.id === category.id ? { ...c, status: nextStatus } : c));
+      toast.success(`Category ${nextStatus === "ACTIVE" ? "activated" : "deactivated"}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to update status");
+    } finally { setStatusLoadingId(null); }
   };
 
-  const badgeClasses = (status) =>
-    status === "ACTIVE"
-      ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-      : "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200";
+  // Derived stats
+  const totalCategories  = categories.length;
+  const activeCount      = useMemo(() => categories.filter(c => c.status === "ACTIVE").length,   [categories]);
+  const inactiveCount    = totalCategories - activeCount;
+  const totalLinked      = useMemo(() => categories.reduce((s, c) => s + Number(c.productCount || 0), 0), [categories]);
 
-  if (loading) {
-    return (
-      <section className="space-y-6 p-4 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="h-9 w-44 animate-pulse rounded bg-slate-200" />
-            <div className="mt-3 h-5 w-72 animate-pulse rounded bg-slate-100" />
-          </div>
-          <div className="h-11 w-36 animate-pulse rounded-xl bg-slate-200" />
-        </div>
+  // Filtered list
+  const filteredCategories = useMemo(() => {
+    return categories.filter(cat => {
+      const matchSearch = !search ||
+        cat.name?.toLowerCase().includes(search.toLowerCase()) ||
+        cat.description?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = filterStatus === "ALL" || cat.status === filterStatus;
+      return matchSearch && matchStatus;
+    });
+  }, [categories, search, filterStatus]);
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[...Array(4)].map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-white"
-            />
-          ))}
+  if (loading) return (
+    <section className="space-y-6">
+      <div className="flex items-end justify-between">
+        <div className="space-y-2">
+          <div className="h-7 w-40 animate-pulse rounded-xl bg-slate-200" />
+          <div className="h-4 w-64 animate-pulse rounded bg-slate-100" />
         </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="space-y-4">
-            {[...Array(5)].map((_, index) => (
-              <div
-                key={index}
-                className="h-14 animate-pulse rounded-xl bg-slate-100"
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
+        <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[...Array(4)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-white" />)}
+      </div>
+      <TableSkeleton />
+    </section>
+  );
 
   return (
-    <section className="space-y-6 p-4 sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="space-y-6">
+
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Categories
-          </h1>
-          <p className="mt-2 text-sm text-slate-500 sm:text-base">
-            Manage product categories, update their details, and control active status.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Categories</h1>
+          <p className="mt-1 text-sm text-slate-500">Manage product categories, descriptions, and visibility.</p>
         </div>
-
-        <button
-          onClick={() => {
-            setSelectedCategory(null);
-            setShowForm(true);
-          }}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
-        >
-          Add Category
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button onClick={() => fetchCategories(true)} disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+          </button>
+          <button onClick={openCreate}
+            className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95">
+            <Plus className="h-4 w-4" /> Add Category
+          </button>
+        </div>
       </div>
 
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Total Categories</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{totalCategories}</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Active Categories</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-600">{activeCategories}</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Inactive Categories</p>
-          <p className="mt-2 text-3xl font-bold text-rose-600">
-            {totalCategories - activeCategories}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Total Products Linked</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">
-            {categories.reduce(
-              (sum, category) => sum + Number(category.productCount || 0),
-              0
-            )}
-          </p>
-        </div>
+        <StatCard title="Total"         value={totalCategories} accent="slate"   Icon={Tag}            />
+        <StatCard title="Active"        value={activeCount}     accent="emerald" Icon={ToggleRight}    />
+        <StatCard title="Inactive"      value={inactiveCount}   accent="rose"    Icon={ToggleLeft}     />
+        <StatCard title="Products Linked" value={totalLinked}   accent="indigo"  Icon={PackageSearch}  />
       </div>
 
-      {error ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700 sm:flex-row sm:items-center sm:justify-between">
-          <span>{error}</span>
-          <button
-            onClick={fetchCategories}
-            className="inline-flex w-fit items-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
-          >
+      {/* Error */}
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}</span>
+          <button onClick={() => fetchCategories()}
+            className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700">
             Retry
           </button>
         </div>
-      ) : null}
+      )}
 
+      {/* Inline form panel */}
       {showForm && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                {selectedCategory ? "Edit Category" : "Create Category"}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Add or update category details for your catalog.
-              </p>
+        <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3.5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100">
+                {selectedCategory ? <Pencil className="h-3.5 w-3.5 text-indigo-600" /> : <Plus className="h-3.5 w-3.5 text-indigo-600" />}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  {selectedCategory ? `Edit "${selectedCategory.name}"` : "New Category"}
+                </p>
+                <p className="text-[11px] text-slate-400">Fill in the details below</p>
+              </div>
             </div>
-
-            <button
-              onClick={closeForm}
-              className="inline-flex w-fit items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
+            <button onClick={closeForm}
+              className="rounded-lg border border-slate-200 p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+              <X className="h-4 w-4" />
             </button>
           </div>
-
-          <CategoryForm
-            initialData={selectedCategory}
-            onSubmit={selectedCategory ? handleUpdate : handleCreate}
-            loading={formLoading}
-          />
+          <div className="p-5">
+            <CategoryForm
+              initialData={selectedCategory}
+              onSubmit={selectedCategory ? handleUpdate : handleCreate}
+              loading={formLoading}
+            />
+          </div>
         </div>
       )}
 
-      {!categories.length ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">No categories found</h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Create your first category to start organizing products.
-          </p>
-          <button
-            onClick={() => {
-              setSelectedCategory(null);
-              setShowForm(true);
-            }}
-            className="mt-5 inline-flex items-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            Create Category
-          </button>
+      {/* Search + filter */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input type="text" placeholder="Search categories…" value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
         </div>
-      ) : (
+        <div className="flex gap-1.5">
+          {["ALL","ACTIVE","INACTIVE"].map(f => (
+            <button key={f} onClick={() => setFilterStatus(f)}
+              className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                filterStatus === f
+                  ? "bg-slate-900 text-white"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}>{f}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Empty */}
+      {!filteredCategories.length && (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-14 text-center">
+          <Tag className="h-8 w-8 text-slate-300" />
+          <div>
+            <p className="text-sm font-semibold text-slate-700">
+              {search || filterStatus !== "ALL" ? "No categories match your filters" : "No categories yet"}
+            </p>
+            {search || filterStatus !== "ALL"
+              ? <button onClick={() => { setSearch(""); setFilterStatus("ALL"); }}
+                  className="mt-2 text-xs text-indigo-600 hover:underline">Clear filters</button>
+              : <button onClick={openCreate}
+                  className="mt-3 flex items-center gap-1 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 mx-auto">
+                  <Plus className="h-3.5 w-3.5" /> Add your first category
+                </button>
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Desktop table */}
+      {filteredCategories.length > 0 && (
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
-                      Category
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="bg-slate-50">
+                <tr>
+                  {["Category","Description","Products","Status","Actions"].map((h, i) => (
+                    <th key={h}
+                      className={`px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 ${i === 4 ? "text-right" : "text-left"}`}>
+                      {h}
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
-                      Description
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
-                      Products
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-700">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {categories.map((category) => {
-                    const isStatusLoading = statusLoadingId === category.id;
-
-                    return (
-                      <tr key={category.id} className="hover:bg-slate-50/70">
-                        <td className="px-6 py-4">
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredCategories.map(category => {
+                  const isStatusLoading = statusLoadingId === category.id;
+                  return (
+                    <tr key={category.id} className="group hover:bg-slate-50/70 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          {category.imageUrl
+                            ? <img src={category.imageUrl} alt={category.name}
+                                width={36} height={36} loading="lazy"
+                                className="h-9 w-9 shrink-0 rounded-xl object-cover border border-slate-100" />
+                            : <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
+                                <Tag className="h-4 w-4 text-indigo-500" />
+                              </div>
+                          }
                           <div>
-                            <p className="font-semibold text-slate-900">
-                              {category.name}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              ID: {category.id}
-                            </p>
+                            <p className="text-sm font-bold text-slate-900">{category.name}</p>
+                            <p className="text-[11px] text-slate-400">ID #{category.id}</p>
                           </div>
-                        </td>
-
-                        <td className="px-6 py-4 text-sm text-slate-600">
-                          <p className="max-w-md line-clamp-2">
-                            {category.description || "No description provided."}
-                          </p>
-                        </td>
-
-                        <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                          {category.productCount ?? 0}
-                        </td>
-
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${badgeClasses(
-                              category.status
-                            )}`}
-                          >
-                            {category.status}
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-3">
-                            <button
-                              onClick={() => {
-                                setSelectedCategory(category);
-                                setShowForm(true);
-                              }}
-                              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              disabled={isStatusLoading}
-                              onClick={() => handleStatus(category)}
-                              className="inline-flex items-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {isStatusLoading
-                                ? "Updating..."
-                                : category.status === "ACTIVE"
-                                ? "Deactivate"
-                                : "Activate"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </td>
+                      <td className="max-w-xs px-5 py-4 text-xs text-slate-500">
+                        <p className="line-clamp-2">{category.description || "—"}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                          <PackageSearch className="h-3 w-3" />{category.productCount ?? 0}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[category.status] ?? "bg-slate-100 text-slate-600"}`}>
+                          {category.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => openEdit(category)}
+                            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 active:scale-95">
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </button>
+                          <button disabled={isStatusLoading} onClick={() => handleStatus(category)}
+                            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
+                              category.status === "ACTIVE"
+                                ? "border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                                : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}>
+                            {isStatusLoading
+                              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating</>
+                              : category.status === "ACTIVE"
+                                ? <><ToggleLeft className="h-3.5 w-3.5" /> Deactivate</>
+                                : <><ToggleRight className="h-3.5 w-3.5" /> Activate</>
+                            }
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <div className="grid gap-4 lg:hidden">
-            {categories.map((category) => {
+          {/* Mobile cards */}
+          <div className="space-y-3 lg:hidden">
+            {filteredCategories.map(category => {
               const isStatusLoading = statusLoadingId === category.id;
-
               return (
-                <article
-                  key={category.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                >
+                <article key={category.id}
+                  className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        {category.name}
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Category ID: {category.id}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      {category.imageUrl
+                        ? <img src={category.imageUrl} alt={category.name}
+                            width={40} height={40} loading="lazy"
+                            className="h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-100" />
+                        : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
+                            <Tag className="h-4 w-4 text-indigo-500" />
+                          </div>
+                      }
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{category.name}</p>
+                        <p className="text-[11px] text-slate-400">ID #{category.id}</p>
+                      </div>
                     </div>
-
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${badgeClasses(
-                        category.status
-                      )}`}
-                    >
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[category.status] ?? "bg-slate-100 text-slate-600"}`}>
                       {category.status}
                     </span>
                   </div>
 
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    {category.description || "No description provided."}
-                  </p>
+                  {category.description && (
+                    <p className="mt-2.5 line-clamp-2 text-xs text-slate-500">{category.description}</p>
+                  )}
 
-                  <div className="mt-4 rounded-xl bg-slate-50 p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Linked Products
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {category.productCount ?? 0}
-                    </p>
+                  <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
+                    <PackageSearch className="h-3.5 w-3.5" />
+                    <span className="font-semibold text-indigo-700">{category.productCount ?? 0}</span> products linked
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(category);
-                        setShowForm(true);
-                      }}
-                      className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-                    >
-                      Edit
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => openEdit(category)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">
+                      <Pencil className="h-3.5 w-3.5" /> Edit
                     </button>
-
-                    <button
-                      disabled={isStatusLoading}
-                      onClick={() => handleStatus(category)}
-                      className="inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
+                    <button disabled={isStatusLoading} onClick={() => handleStatus(category)}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition disabled:opacity-60 ${
+                        category.status === "ACTIVE"
+                          ? "border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                          : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      }`}>
                       {isStatusLoading
-                        ? "Updating..."
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Updating</>
                         : category.status === "ACTIVE"
-                        ? "Deactivate"
-                        : "Activate"}
+                          ? <><ToggleLeft className="h-3.5 w-3.5" />Deactivate</>
+                          : <><ToggleRight className="h-3.5 w-3.5" />Activate</>
+                      }
                     </button>
                   </div>
                 </article>

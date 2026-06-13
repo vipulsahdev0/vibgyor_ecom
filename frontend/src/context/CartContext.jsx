@@ -1,221 +1,155 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useReducer } from "react";
 import toast from "react-hot-toast";
 import useAuth from "../hooks/useAuth";
 import {
-  getCart,
-  addToCart as addApi,
-  updateCartItem as updateApi,
-  removeCartItem as removeApi,
-  clearCart as clearApi,
+  getCart, addToCart as addApi, updateCartItem as updateApi,
+  removeCartItem as removeApi, clearCart as clearApi,
 } from "../api/cartApi";
 
 export const CartContext = createContext(null);
 
-const EMPTY_CART = {
-  items: [],
-  totalItems: 0,
-  subtotal: 0,
-  discountTotal: 0,
-  grandTotal: 0,
-};
+// ── constants & helpers ───────────────────────────────────────────────────────
+const GUEST_CART_KEY = "guest_cart";
 
-const calcCartTotals = (items) => {
-  const validItems = Array.isArray(items) ? items : [];
-  
-  const totalItems = validItems.reduce((sum, item) => {
-    const qty = Number(item.quantity || 0);
-    return sum + (qty > 0 ? qty : 0);
-  }, 0);
-  
-  const subtotal = validItems.reduce((sum, item) => {
-    const price = Number(item.unitPrice || 0);
-    const qty = Number(item.quantity || 0);
-    return sum + (price > 0 && qty > 0 ? price * qty : 0);
-  }, 0);
-  
-  const grandTotal = validItems.reduce((sum, item) => {
-    const lineTotal = Number(item.lineTotal || 0);
-    return sum + (lineTotal > 0 ? lineTotal : 0);
-  }, 0);
+const EMPTY_CART = Object.freeze({
+  items: [], totalItems: 0, subtotal: 0, discountTotal: 0, grandTotal: 0,
+});
 
+const getErrorMessage = (err) =>
+  err?.response?.data?.message || err?.message || "Something went wrong";
+
+function isCartErrorSafe(status) {
+  return [400, 403, 404, 204].includes(status);
+}
+
+function calcCartTotals(items) {
+  const valid = Array.isArray(items) ? items : [];
+  const totalItems = valid.reduce((s, i) => s + Math.max(0, Number(i.quantity || 0)), 0);
+  const subtotal   = valid.reduce((s, i) => {
+    const p = Number(i.unitPrice || 0), q = Number(i.quantity || 0);
+    return s + (p > 0 && q > 0 ? p * q : 0);
+  }, 0);
+  const grandTotal = valid.reduce((s, i) => s + Math.max(0, Number(i.lineTotal || 0)), 0);
   return {
     totalItems,
-    subtotal: Math.max(0, subtotal),
+    subtotal:      Math.max(0, subtotal),
     discountTotal: Math.max(0, subtotal - grandTotal),
-    grandTotal: Math.max(0, grandTotal),
+    grandTotal:    Math.max(0, grandTotal),
   };
-};
+}
 
-const getErrorMessage = (error) =>
-  error?.response?.data?.message || error?.message || "Something went wrong";
+function normalizeCartResponse(data) {
+  return {
+    ...EMPTY_CART,
+    ...data,
+    items: Array.isArray(data?.items) ? data.items : [],
+  };
+}
 
+function buildGuestItem(product, quantity) {
+  const unitPrice = Number(product.finalPrice ?? product.discountedPrice ?? product.price ?? 0);
+  return {
+    cartItemId:      Date.now(),
+    productId:       product.id,
+    productName:     product.name,
+    productImageUrl: product.primaryImageUrl
+                     || product.images?.find(i => i?.isPrimary)?.imageUrl
+                     || product.images?.[0]?.imageUrl
+                     || "",
+    quantity,
+    unitPrice,
+    lineTotal: unitPrice * quantity,
+    addedAt:   new Date().toISOString(),
+  };
+}
+
+// ── reducer ───────────────────────────────────────────────────────────────────
+const INITIAL = { cart: EMPTY_CART, loading: false };
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "SET_CART":    return { ...state, cart: action.payload };
+    case "SET_LOADING": return { ...state, loading: action.payload };
+    default:            return state;
+  }
+}
+
+// ── provider ──────────────────────────────────────────────────────────────────
 export default function CartProvider({ children }) {
   const { user, loading: authLoading, logout } = useAuth();
-  const [cart, setCart] = useState(EMPTY_CART);
-  const [loading, setLoading] = useState(false);
+  const [state, dispatch] = useReducer(reducer, INITIAL);
 
+  const setCart    = (cart)    => dispatch({ type: "SET_CART",    payload: cart    });
+  const setLoading = (loading) => dispatch({ type: "SET_LOADING", payload: loading });
+
+  // ── guest helpers ───────────────────────────────────────────────────────────
   const loadGuestCart = useCallback(() => {
     try {
-      const saved = localStorage.getItem("guest_cart");
-
-      if (!saved) {
-        setCart(EMPTY_CART);
-        return;
-      }
-
-      const parsed = JSON.parse(saved);
-      setCart({
-        ...EMPTY_CART,
-        ...parsed,
-        items: Array.isArray(parsed?.items) ? parsed.items : [],
-      });
-    } catch (error) {
-      console.error("Failed to load guest cart:", error);
-      localStorage.removeItem("guest_cart");
+      const raw = localStorage.getItem(GUEST_CART_KEY);
+      if (!raw) { setCart(EMPTY_CART); return; }
+      const parsed = JSON.parse(raw);
+      setCart({ ...EMPTY_CART, ...parsed, items: Array.isArray(parsed?.items) ? parsed.items : [] });
+    } catch {
+      localStorage.removeItem(GUEST_CART_KEY);
       setCart(EMPTY_CART);
     }
   }, []);
 
   const saveGuestCart = useCallback((items) => {
-    const totals = calcCartTotals(items);
-    const updatedCart = { items, ...totals };
-
-    localStorage.setItem("guest_cart", JSON.stringify(updatedCart));
-    setCart(updatedCart);
+    const updated = { items, ...calcCartTotals(items) };
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(updated));
+    setCart(updated);
   }, []);
 
+  // ── backend helpers ─────────────────────────────────────────────────────────
   const fetchBackendCart = useCallback(async () => {
-    if (!user?.userId) {
-      setCart(EMPTY_CART);
-      return;
-    }
-
+    if (!user?.userId) { setCart(EMPTY_CART); return; }
     try {
       setLoading(true);
       const data = await getCart(user.userId);
-
-      setCart({
-        ...EMPTY_CART,
-        ...data,
-        items: Array.isArray(data?.items) ? data.items : [],
-      });
-    } catch (error) {
-      const status = error?.response?.status;
-      const message = getErrorMessage(error);
-
-      if (status === 401) {
-        setCart(EMPTY_CART);
-        logout?.();
-        return;
-      }
-
-      // Treat 404 and other "not found" type errors as empty cart
-      if (status === 404 || message.toLowerCase().includes("not found")) {
-        setCart(EMPTY_CART);
-        return;
-      }
-
-      // Empty cart for 400/403 errors (permission/validation issues)
-      if (status === 400 || status === 403) {
-        console.warn("Cart access issue:", message);
-        setCart(EMPTY_CART);
-        return;
-      }
-
-      if (status === 500) {
-        console.error("Cart fetch failed with server error:", error);
-        setCart(EMPTY_CART);
-        toast.error("Your cart could not be loaded right now.");
-        return;
-      }
-
-      // For any other errors, default to empty cart without showing error
-      console.warn("Cart fetch returned error (defaulting to empty):", error);
+      setCart(normalizeCartResponse(data));
+    } catch (err) {
+      const status  = err?.response?.status;
+      const message = getErrorMessage(err);
+      if (status === 401) { setCart(EMPTY_CART); logout?.(); return; }
+      if (isCartErrorSafe(status)) { setCart(EMPTY_CART); return; }
+      console.warn("Cart fetch failed:", message);
       setCart(EMPTY_CART);
-      // Only show error toast for unexpected errors
-      if (status !== 204) {
-        // 204 No Content is not an error
-        console.error("Unexpected cart fetch error:", error);
-      }
-    } finally {
-      setLoading(false);
-    }
+      if (status === 500) toast.error("Your cart could not be loaded right now.");
+    } finally { setLoading(false); }
   }, [user?.userId, logout]);
 
   useEffect(() => {
     if (authLoading) return;
-
-    if (user?.userId) {
-      fetchBackendCart();
-    } else {
-      loadGuestCart();
-    }
+    user?.userId ? fetchBackendCart() : loadGuestCart();
   }, [authLoading, user?.userId, fetchBackendCart, loadGuestCart]);
 
+  // ── public actions ──────────────────────────────────────────────────────────
   const addToCart = async (product, quantity = 1) => {
     if (quantity < 1) return;
 
     if (user?.userId) {
       try {
         setLoading(true);
-
-        const data = await addApi(user.userId, {
-          productId: product.id,
-          quantity,
-        });
-
-        setCart({
-          ...EMPTY_CART,
-          ...data,
-          items: Array.isArray(data?.items) ? data.items : [],
-        });
-
+        const data = await addApi(user.userId, { productId: product.id, quantity });
+        setCart(normalizeCartResponse(data));
         toast.success("Added to cart");
-      } catch (error) {
-        console.error(error);
-        toast.error(getErrorMessage(error) || "Failed to add item");
-      } finally {
-        setLoading(false);
-      }
-
+      } catch (err) {
+        console.error(err);
+        toast.error(getErrorMessage(err));
+      } finally { setLoading(false); }
       return;
     }
 
-    const productId = product.id;
-    const unitPrice = Number(product.finalPrice ?? product.discountedPrice ?? product.price ?? 0);
-    const productImageUrl =
-      product.primaryImageUrl ||
-      product.images?.find((img) => img?.isPrimary)?.imageUrl ||
-      product.images?.[0]?.imageUrl ||
-      "";
-
-    const existing = cart.items.find((item) => item.productId === productId);
-
-    const updatedItems = existing
-      ? cart.items.map((item) =>
-          item.productId === productId
-            ? {
-                ...item,
-                quantity: item.quantity + quantity,
-                lineTotal: unitPrice * (item.quantity + quantity),
-              }
-            : item
-        )
-      : [
-          ...cart.items,
-          {
-            cartItemId: Date.now(),
-            productId,
-            productName: product.name,
-            productImageUrl,
-            quantity,
-            unitPrice,
-            lineTotal: unitPrice * quantity,
-            addedAt: new Date().toISOString(),
-          },
-        ];
-
-    saveGuestCart(updatedItems);
+    // Guest path
+    const { items } = state.cart;
+    const existing  = items.find(i => i.productId === product.id);
+    const updated   = existing
+      ? items.map(i => i.productId === product.id
+          ? { ...i, quantity: i.quantity + quantity, lineTotal: Number(i.unitPrice) * (i.quantity + quantity) }
+          : i)
+      : [...items, buildGuestItem(product, quantity)];
+    saveGuestCart(updated);
     toast.success("Added to cart");
   };
 
@@ -225,38 +159,20 @@ export default function CartProvider({ children }) {
     if (user?.userId) {
       try {
         setLoading(true);
-
-        const data = await updateApi(user.userId, {
-          productId,
-          quantity,
-        });
-
-        setCart({
-          ...EMPTY_CART,
-          ...data,
-          items: Array.isArray(data?.items) ? data.items : [],
-        });
-      } catch (error) {
-        console.error(error);
-        toast.error(getErrorMessage(error) || "Failed to update cart");
-      } finally {
-        setLoading(false);
-      }
-
+        const data = await updateApi(user.userId, { productId, quantity });
+        setCart(normalizeCartResponse(data));
+      } catch (err) {
+        console.error(err);
+        toast.error(getErrorMessage(err));
+      } finally { setLoading(false); }
       return;
     }
 
-    const updatedItems = cart.items.map((item) =>
-      item.productId === productId
-        ? {
-            ...item,
-            quantity,
-            lineTotal: Number(item.unitPrice || 0) * quantity,
-          }
-        : item
-    );
-
-    saveGuestCart(updatedItems);
+    saveGuestCart(state.cart.items.map(i =>
+      i.productId === productId
+        ? { ...i, quantity, lineTotal: Number(i.unitPrice || 0) * quantity }
+        : i
+    ));
   };
 
   const removeItem = async (productId) => {
@@ -264,26 +180,16 @@ export default function CartProvider({ children }) {
       try {
         setLoading(true);
         const data = await removeApi(user.userId, productId);
-
-        setCart({
-          ...EMPTY_CART,
-          ...data,
-          items: Array.isArray(data?.items) ? data.items : [],
-        });
-
+        setCart(normalizeCartResponse(data));
         toast.success("Item removed");
-      } catch (error) {
-        console.error(error);
-        toast.error(getErrorMessage(error) || "Failed to remove item");
-      } finally {
-        setLoading(false);
-      }
-
+      } catch (err) {
+        console.error(err);
+        toast.error(getErrorMessage(err));
+      } finally { setLoading(false); }
       return;
     }
 
-    const updatedItems = cart.items.filter((item) => item.productId !== productId);
-    saveGuestCart(updatedItems);
+    saveGuestCart(state.cart.items.filter(i => i.productId !== productId));
     toast.success("Item removed");
   };
 
@@ -294,33 +200,28 @@ export default function CartProvider({ children }) {
         await clearApi(user.userId);
         setCart(EMPTY_CART);
         toast.success("Cart cleared");
-      } catch (error) {
-        console.error(error);
-        toast.error(getErrorMessage(error) || "Failed to clear cart");
-      } finally {
-        setLoading(false);
-      }
-
+      } catch (err) {
+        console.error(err);
+        toast.error(getErrorMessage(err));
+      } finally { setLoading(false); }
       return;
     }
 
-    localStorage.removeItem("guest_cart");
+    localStorage.removeItem(GUEST_CART_KEY);
     setCart(EMPTY_CART);
     toast.success("Cart cleared");
   };
 
   return (
-    <CartContext.Provider
-      value={{
-        cart,
-        loading,
-        addToCart,
-        updateCart,
-        removeItem,
-        clearAll,
-        fetchBackendCart,
-      }}
-    >
+    <CartContext.Provider value={{
+      cart:             state.cart,
+      loading:          state.loading,
+      addToCart,
+      updateCart,
+      removeItem,
+      clearAll,
+      fetchBackendCart,
+    }}>
       {children}
     </CartContext.Provider>
   );

@@ -31,7 +31,6 @@ function normalizeUser(data) {
     firstName: data?.firstName ?? "",
     lastName:  data?.lastName  ?? "",
     email:     data?.email     ?? "",
-    // Accept both "ADMIN" and "ROLE_ADMIN" from Spring Boot
     role:      (data?.role ?? "").replace("ROLE_", ""),
   };
 }

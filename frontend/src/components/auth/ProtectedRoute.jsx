@@ -30,24 +30,24 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
   // ── Not authenticated ─────────────────────────────────────────────────────
   if (!user) return <Navigate to="/login" replace />;
 
-  // ── Authenticated but wrong role ──────────────────────────────────────────
   if (adminOnly && !isAdmin) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 shadow-sm">
-          <ShieldAlert className="h-8 w-8" />
-        </div>
+      <>
+        <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 shadow-sm">
+            <ShieldAlert className="h-8 w-8" />
+          </div>
 
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-slate-900">Access Denied</h1>
-          <p className="mt-2 max-w-xs text-sm text-slate-500">
-            You don&apos;t have permission to view this page.
-            This area is restricted to administrators.
-          </p>
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-slate-900">
+              Access Denied
+            </h1>
+            <p className="mt-2 max-w-xs text-sm text-slate-500">
+              You don't have permission to view this page.
+            </p>
+          </div>
         </div>
-
-        <Navigate to="/" replace />
-      </div>
+      </>
     );
   }
 

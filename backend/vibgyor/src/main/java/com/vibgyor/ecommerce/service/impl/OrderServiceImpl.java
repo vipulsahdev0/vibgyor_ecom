@@ -218,9 +218,14 @@ public class OrderServiceImpl implements OrderService {
                         new RuntimeException(
                                 "Order not found with id: " + orderId));
 
-        if (order.getOrderStatus() == OrderStatus.DELIVERED) {
+        if (
+                order.getOrderStatus() == OrderStatus.SHIPPED ||
+                        order.getOrderStatus() == OrderStatus.DELIVERED
+        )
+        {
             throw new RuntimeException(
-                    "Delivered orders cannot be cancelled");
+                    "Shipped or delivered orders cannot be cancelled"
+            );
         }
 
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {

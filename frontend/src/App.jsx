@@ -19,6 +19,7 @@ import AdminCategories from "./pages/admin/Categories";
 import AdminProducts from "./pages/admin/Products";
 import Orders from "./pages/admin/Orders";
 import Users from "./pages/admin/Users";
+import OrderDetails from "./pages/user/OrderDetails";
 
 import Profile from "./pages/user/Profile";
 import Cart from "./pages/user/Cart";
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="checkout" element={<Checkout />} />
           <Route path="orders" element={<UserOrders />} />
+          <Route path="orders/:orderId" element={<OrderDetails />} />
           <Route
             path="payment-success/:orderId"
             element={<PaymentSuccess />}

@@ -6,9 +6,13 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { getUserOrders } from "../../api/orderApi";
 import useAuth from "../../hooks/useAuth";
+import {
+  getUserOrders,
+  cancelOrder,
+} from "../../api/orderApi";
 
+import toast from "react-hot-toast";
 const formatCurrency = (amount) =>
   amount == null
     ? "₹0.00"
@@ -108,6 +112,22 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+
+  const handleCancel = async (orderId) => {
+    try {
+      await cancelOrder(orderId);
+
+      toast.success("Order cancelled");
+
+      fetchOrders();
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message ||
+        "Unable to cancel order"
+      );
+    }
+  };
 
   return (
     <section className="space-y-8">
@@ -230,14 +250,25 @@ export default function Orders() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-end border-t border-slate-100 px-5 py-3">
+                <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
+
+                  {["PENDING", "CONFIRMED"].includes(order.orderStatus) && (
+                    <button
+                      onClick={() => handleCancel(order.id)}
+                      className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
+                    >
+                      Cancel Order
+                    </button>
+                  )}
+
                   <Link
-                    to={`/orders/${order.id}`}
+                    to={`/account/orders/${order.id}`}
                     className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
                   >
                     View Details
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
+
                 </div>
               </article>
             );

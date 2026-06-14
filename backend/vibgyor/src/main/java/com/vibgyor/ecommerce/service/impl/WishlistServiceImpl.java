@@ -7,6 +7,7 @@ import com.vibgyor.ecommerce.entity.Product;
 import com.vibgyor.ecommerce.entity.User;
 import com.vibgyor.ecommerce.entity.Wishlist;
 import com.vibgyor.ecommerce.entity.WishlistItem;
+import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
 import com.vibgyor.ecommerce.mapper.WishlistMapper;
 import com.vibgyor.ecommerce.repository.ProductRepo;
 import com.vibgyor.ecommerce.repository.UserRepo;
@@ -40,8 +41,12 @@ public class WishlistServiceImpl implements WishlistService {
         Wishlist wishlist = getOrCreateWishlist(userId);
 
         Product product = productRepo.findById(request.getProductId())
-                .orElseThrow(() -> new RuntimeException(
-                        "Product not found with id: " + request.getProductId()));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Product not found with id: "
+                                        + request.getProductId()
+                        )
+                );
 
         // Prevent duplicate entries — silently return current wishlist if already present
         boolean alreadyExists = wishlistItemRepo
@@ -70,11 +75,11 @@ public class WishlistServiceImpl implements WishlistService {
         Wishlist wishlist = getOrCreateWishlist(userId);
 
         Product product = productRepo.findById(productId)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Product not found with id: " + productId));
 
         wishlistItemRepo.findByWishlistAndProduct(wishlist, product)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Product is not in wishlist"));
 
         wishlistItemRepo.deleteByWishlistAndProduct(wishlist, product);
@@ -112,7 +117,7 @@ public class WishlistServiceImpl implements WishlistService {
         return wishlistRepo.findByUserId(userId)
                 .orElseGet(() -> {
                     User user = userRepo.findById(userId)
-                            .orElseThrow(() -> new RuntimeException(
+                            .orElseThrow(() -> new ResourceNotFoundException(
                                     "User not found with id: " + userId));
                     Wishlist newWishlist = Wishlist.builder()
                             .user(user)

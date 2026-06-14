@@ -3,35 +3,39 @@ import api from "./axios";
 const getWishlistBase = (userId) =>
   `/api/users/${userId}/wishlist`;
 
-export const getWishlist = async (
-  userId
-) => {
-  const response = await api.get(
+export const getWishlist = async (userId) => {
+  const { data } = await api.get(
     getWishlistBase(userId)
   );
 
-  return response.data;
+  return data;
 };
 
 export const addToWishlist = async (
   userId,
   productId
 ) => {
-  const response = await api.post(
+  if (!productId) {
+    throw new Error("Product ID is required");
+  }
+
+  const { data } = await api.post(
     `${getWishlistBase(userId)}/items`,
-    { productId }
+    {
+      productId: Number(productId),
+    }
   );
 
-  return response.data;
+  return data;
 };
 
 export const removeFromWishlist = async (
   userId,
   productId
 ) => {
-  const response = await api.delete(
+  const { data } = await api.delete(
     `${getWishlistBase(userId)}/items/${productId}`
   );
 
-  return response.data;
+  return data;
 };

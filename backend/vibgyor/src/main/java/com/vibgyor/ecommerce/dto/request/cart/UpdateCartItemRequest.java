@@ -2,6 +2,7 @@ package com.vibgyor.ecommerce.dto.request.cart;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 @Data
@@ -11,6 +12,7 @@ import lombok.*;
 public class UpdateCartItemRequest {
 
     @NotNull(message = "Product ID is required")
+    @Positive
     private Long productId;
 
     @NotNull(message = "Quantity is required")

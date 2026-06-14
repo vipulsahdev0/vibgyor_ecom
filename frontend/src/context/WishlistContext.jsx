@@ -79,7 +79,7 @@ export default function WishlistProvider({ children }) {
 
     try {
       setLoading(true);
-      const data = await addApi(user.userId, { productId });
+      const data = await addApi(user.userId, productId );
       // Reconcile with server response
       setItems(Array.isArray(data?.items) ? data.items : state.items);
       toast.success("Added to wishlist");

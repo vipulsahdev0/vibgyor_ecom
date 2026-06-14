@@ -31,7 +31,6 @@ const formatDate = (date) =>
 
 const STATUS_STYLES = {
   DELIVERED: "bg-emerald-100 text-emerald-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
   SUCCESS: "bg-emerald-100 text-emerald-700",
   PAID: "bg-emerald-100 text-emerald-700",
   PENDING: "bg-amber-100 text-amber-700",

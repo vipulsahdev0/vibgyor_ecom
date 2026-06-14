@@ -17,4 +17,7 @@ public class SalesStatsResponse {
     private BigDecimal averageOrderValue;
     private long paidOrderCount;
     private long totalPaymentCount;
+    private long successPayments;
+    private long failedPayments;
+    private long pendingPayments;
 }

@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +61,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public SalesStatsResponse getSalesStats() {
+
         List<Order> allOrders = orderRepo.findAll();
         List<Payment> allPayments = paymentRepo.findAll();
 
@@ -69,7 +71,7 @@ public class AdminServiceImpl implements AdminService {
 
         BigDecimal totalSales = paidOrders.stream()
                 .map(Order::getTotalAmount)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal averageOrderValue = paidOrders.isEmpty()
@@ -80,11 +82,26 @@ public class AdminServiceImpl implements AdminService {
                 RoundingMode.HALF_UP
         );
 
+        long successPayments = allPayments.stream()
+                .filter(payment -> payment.getPaymentStatus() == PaymentStatus.SUCCESS)
+                .count();
+
+        long failedPayments = allPayments.stream()
+                .filter(payment -> payment.getPaymentStatus() == PaymentStatus.FAILED)
+                .count();
+
+        long pendingPayments = allPayments.stream()
+                .filter(payment -> payment.getPaymentStatus() == PaymentStatus.PENDING)
+                .count();
+
         return dashboardMapper.toSalesStatsResponse(
                 totalSales,
                 averageOrderValue,
                 paidOrders.size(),
-                allPayments.size()
+                allPayments.size(),
+                successPayments,
+                failedPayments,
+                pendingPayments
         );
     }
 
@@ -107,6 +124,7 @@ public class AdminServiceImpl implements AdminService {
         } catch (Exception ignored) {
             // In case CANCELLED is not available in enum yet
         }
+
 
         return dashboardMapper.toOrderStatsResponse(
                 totalOrders,

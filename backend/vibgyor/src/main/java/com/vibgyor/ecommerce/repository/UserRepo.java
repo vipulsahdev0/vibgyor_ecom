@@ -33,6 +33,10 @@ public interface UserRepo
             String lastName
     );
 
+    long countByStatus(
+            Status status
+    );
+
     long countByRole(
             UserRole role
     );

@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   ClipboardList, RefreshCw, AlertCircle, Search,
   Clock, CheckCircle2, XCircle, Loader2, Filter,
   ChevronDown, ChevronUp, Package, IndianRupee,
 } from "lucide-react";
-import { getAllOrders } from "../../api/orderApi";
-
+import {
+  getAllOrders,
+  updateOrderStatus,
+} from "../../api/orderApi";
 // ── helpers ──────────────────────────────────────────────────────────────────
 const formatCurrency = (v) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(v || 0));
@@ -16,30 +18,46 @@ const formatDate = (v) => v
   : "—";
 
 const ORDER_STATUS_STYLES = {
-  COMPLETED:  "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
-  DELIVERED:  "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
-  PENDING:    "bg-amber-50   text-amber-700   ring-1 ring-inset ring-amber-200",
-  PROCESSING: "bg-amber-50   text-amber-700   ring-1 ring-inset ring-amber-200",
-  CANCELLED:  "bg-rose-50    text-rose-700    ring-1 ring-inset ring-rose-200",
-  SHIPPED:    "bg-sky-50     text-sky-700     ring-1 ring-inset ring-sky-200",
+  PENDING:
+    "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+
+  CONFIRMED:
+    "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200",
+
+  PROCESSING:
+    "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200",
+
+  PACKED:
+    "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200",
+
+  SHIPPED:
+    "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
+
+  DELIVERED:
+    "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+
+  CANCELLED:
+    "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
 };
 
 const PAYMENT_STATUS_STYLES = {
-  PAID:    "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  PAID: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   SUCCESS: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
-  FAILED:  "bg-rose-50    text-rose-700    ring-1 ring-inset ring-rose-200",
+  FAILED: "bg-rose-50    text-rose-700    ring-1 ring-inset ring-rose-200",
   PENDING: "bg-amber-50   text-amber-700   ring-1 ring-inset ring-amber-200",
 };
 
 const ORDER_STATUS_ICON = {
-  COMPLETED:  <CheckCircle2 className="h-3.5 w-3.5" />,
-  DELIVERED:  <CheckCircle2 className="h-3.5 w-3.5" />,
-  PENDING:    <Clock        className="h-3.5 w-3.5" />,
-  PROCESSING: <Clock        className="h-3.5 w-3.5" />,
-  CANCELLED:  <XCircle      className="h-3.5 w-3.5" />,
+  PENDING: <Clock className="h-3.5 w-3.5" />,
+  CONFIRMED: <CheckCircle2 className="h-3.5 w-3.5" />,
+  PROCESSING: <Clock className="h-3.5 w-3.5" />,
+  PACKED: <Package className="h-3.5 w-3.5" />,
+  SHIPPED: <Package className="h-3.5 w-3.5" />,
+  DELIVERED: <CheckCircle2 className="h-3.5 w-3.5" />,
+  CANCELLED: <XCircle className="h-3.5 w-3.5" />,
 };
 
-const STATUS_FILTERS = ["ALL","PENDING","PROCESSING","SHIPPED","COMPLETED","CANCELLED"];
+const STATUS_FILTERS = ["ALL", "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
 // ── sub-components ────────────────────────────────────────────────────────────
 function TableSkeleton() {
@@ -65,10 +83,10 @@ function TableSkeleton() {
 
 function StatCard({ title, value, accent, Icon }) {
   const map = {
-    slate:   { bg: "bg-slate-50",   icon: "text-slate-500",   val: "text-slate-900"   },
-    amber:   { bg: "bg-amber-50",   icon: "text-amber-500",   val: "text-amber-700"   },
+    slate: { bg: "bg-slate-50", icon: "text-slate-500", val: "text-slate-900" },
+    amber: { bg: "bg-amber-50", icon: "text-amber-500", val: "text-amber-700" },
     emerald: { bg: "bg-emerald-50", icon: "text-emerald-500", val: "text-emerald-700" },
-    rose:    { bg: "bg-rose-50",    icon: "text-rose-500",    val: "text-rose-700"    },
+    rose: { bg: "bg-rose-50", icon: "text-rose-500", val: "text-rose-700" },
   };
   const c = map[accent] ?? map.slate;
   return (
@@ -140,13 +158,14 @@ function MobileOrderCard({ order }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Orders() {
-  const [orders,       setOrders]       = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [refreshing,   setRefreshing]   = useState(false);
-  const [error,        setError]        = useState("");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [search,       setSearch]       = useState("");
-  const [expandedRow,  setExpandedRow]  = useState(null);
+  const [search, setSearch] = useState("");
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
 
   const fetchOrders = useCallback(async (showLoader = false) => {
     try {
@@ -164,10 +183,21 @@ export default function Orders() {
   useEffect(() => { fetchOrders(true); }, [fetchOrders]);
 
   const orderStats = useMemo(() => ({
-    total:     orders.length,
-    pending:   orders.filter(o => ["PENDING","PROCESSING"].includes(o.orderStatus)).length,
-    completed: orders.filter(o => ["COMPLETED","DELIVERED"].includes(o.orderStatus)).length,
-    cancelled: orders.filter(o => o.orderStatus === "CANCELLED").length,
+    total: orders.length,
+
+    pending: orders.filter(
+      o => ["PENDING", "CONFIRMED", "PROCESSING", "PACKED", "SHIPPED"]
+        .includes(o.orderStatus)
+    ).length,
+
+    completed: orders.filter(
+      o => o.orderStatus === "DELIVERED"
+    ).length,
+
+    cancelled: orders.filter(
+      o => o.orderStatus === "CANCELLED"
+    ).length,
+
   }), [orders]);
 
   const filteredOrders = useMemo(() => orders.filter(o => {
@@ -181,6 +211,34 @@ export default function Orders() {
   }), [orders, statusFilter, search]);
 
   const toggleRow = (id) => setExpandedRow(prev => prev === id ? null : id);
+
+  const handleStatusChange = async (orderId, status) => {
+    try {
+
+      await updateOrderStatus(orderId, {
+        orderStatus: status,
+      });
+
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId
+            ? { ...order, orderStatus: status }
+            : order
+        )
+      );
+
+      toast.success("Order status updated");
+
+    } catch (err) {
+
+      console.error(err);
+
+      toast.error(
+        err?.response?.data?.message ||
+        "Failed to update order status"
+      );
+    }
+  };
 
   if (loading) return (
     <section className="space-y-6">
@@ -210,10 +268,10 @@ export default function Orders() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Orders" value={orderStats.total}     accent="slate"   Icon={ClipboardList} />
-        <StatCard title="Pending"      value={orderStats.pending}   accent="amber"   Icon={Clock}        />
-        <StatCard title="Completed"    value={orderStats.completed} accent="emerald" Icon={CheckCircle2} />
-        <StatCard title="Cancelled"    value={orderStats.cancelled} accent="rose"    Icon={XCircle}      />
+        <StatCard title="Total Orders" value={orderStats.total} accent="slate" Icon={ClipboardList} />
+        <StatCard title="Pending" value={orderStats.pending} accent="amber" Icon={Clock} />
+        <StatCard title="Completed" value={orderStats.completed} accent="emerald" Icon={CheckCircle2} />
+        <StatCard title="Cancelled" value={orderStats.cancelled} accent="rose" Icon={XCircle} />
       </div>
 
       {/* Error */}
@@ -239,11 +297,10 @@ export default function Orders() {
           <Filter className="h-4 w-4 shrink-0 text-slate-400" />
           {STATUS_FILTERS.map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
-              className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                statusFilter === f
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}>{f}</button>
+              className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition ${statusFilter === f
+                ? "bg-slate-900 text-white"
+                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}>{f}</button>
           ))}
         </div>
       </div>
@@ -271,7 +328,7 @@ export default function Orders() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  {["Order","Items","Total","Order Status","Payment","Date"].map((h, i) => (
+                  {["Order", "Items", "Total", "Order Status", "Payment", "Date"].map((h, i) => (
                     <th key={h}
                       className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">
                       {h}
@@ -281,7 +338,7 @@ export default function Orders() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filteredOrders.map(order => (
-                  <>
+                  <Fragment key={order.id}>
                     <tr key={order.id}
                       className={`group transition-colors hover:bg-slate-50/70 ${expandedRow === order.id ? "bg-indigo-50/30" : ""}`}>
                       <td className="px-5 py-4">
@@ -307,9 +364,42 @@ export default function Orders() {
                         {formatCurrency(order.totalAmount)}
                       </td>
                       <td className="px-5 py-4">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ORDER_STATUS_STYLES[order.orderStatus] ?? "bg-slate-100 text-slate-600"}`}>
-                          {ORDER_STATUS_ICON[order.orderStatus]}{order.orderStatus}
-                        </span>
+                        {editingOrder === order.id ? (
+                          <select
+                            value={order.orderStatus}
+                            onChange={(e) => {
+                              handleStatusChange(order.id, e.target.value);
+                              setEditingOrder(null);
+                            }}
+                            autoFocus
+                            className="rounded-lg border px-2 py-1 text-sm"
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="CONFIRMED">Confirmed</option>
+                            <option value="PROCESSING">Processing</option>
+                            <option value="PACKED">Packed</option>
+                            <option value="SHIPPED">Shipped</option>
+                            <option value="DELIVERED">Delivered</option>
+                            <option value="CANCELLED">Cancelled</option>
+                          </select>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (
+                                order.orderStatus !== "DELIVERED" &&
+                                order.orderStatus !== "CANCELLED"
+                              ) {
+                                setEditingOrder(order.id);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ORDER_STATUS_STYLES[order.orderStatus] ??
+                              "bg-slate-100 text-slate-600"
+                              }`}
+                          >
+                            {ORDER_STATUS_ICON[order.orderStatus]}
+                            {order.orderStatus}
+                          </button>
+                        )}
                       </td>
                       <td className="px-5 py-4">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${PAYMENT_STATUS_STYLES[order.paymentStatus] ?? "bg-slate-100 text-slate-600"}`}>
@@ -337,7 +427,7 @@ export default function Orders() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

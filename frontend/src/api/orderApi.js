@@ -28,6 +28,10 @@ export const cancelOrder = async (orderId) => {
 };
 
 export const updateOrderStatus = async (orderId, data) => {
-  const response = await api.patch(`${ORDER_BASE}/${orderId}/status`, data);
+  const response = await api.patch(`${ORDER_BASE}/${orderId}/status`, 
+    {
+      orderStatus: status
+    }
+  );
   return response.data;
 };

@@ -7,6 +7,7 @@ import com.vibgyor.ecommerce.dto.response.payment.PaymentStatusResponse;
 import com.vibgyor.ecommerce.dto.response.payment.PaymentSummaryResponse;
 import com.vibgyor.ecommerce.entity.Order;
 import com.vibgyor.ecommerce.entity.Payment;
+import com.vibgyor.ecommerce.entity.enums.OrderStatus;
 import com.vibgyor.ecommerce.entity.enums.PaymentStatus;
 import com.vibgyor.ecommerce.mapper.PaymentMapper;
 import com.vibgyor.ecommerce.repository.OrderRepo;
@@ -91,37 +92,68 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentStatusResponse updatePaymentStatus(Long paymentId,
-                                                     PaymentStatusUpdateRequest request) {
+    public PaymentStatusResponse updatePaymentStatus(
+            Long paymentId,
+            PaymentStatusUpdateRequest request
+    ) {
 
         Payment payment = paymentRepo.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Payment not found with id: " + paymentId));
+                .orElseThrow(() ->
+                        new RuntimeException("Payment not found with id: " + paymentId));
 
         payment.setPaymentStatus(request.getPaymentStatus());
 
-        if (request.getFailureReason() != null) {
+        if (request.getPaymentStatus() == PaymentStatus.SUCCESS) {
+
+            payment.setPaymentDate(
+                    request.getPaymentDate() != null
+                            ? request.getPaymentDate()
+                            : LocalDateTime.now()
+            );
+
+            payment.setFailureReason(null);
+
+        } else if (request.getPaymentStatus() == PaymentStatus.FAILED) {
+
             payment.setFailureReason(request.getFailureReason());
+
         }
 
-        if (request.getPaymentDate() != null) {
-            payment.setPaymentDate(request.getPaymentDate());
-        } else if (request.getPaymentStatus() == PaymentStatus.SUCCESS) {
-            // Auto-set payment date on success if not provided
-            payment.setPaymentDate(LocalDateTime.now());
-        }
+        Payment savedPayment = paymentRepo.save(payment);
 
-        paymentRepo.save(payment);
+        // ===== ORDER SYNC =====
 
-        // Sync payment status back to the parent Order
         Order order = payment.getOrder();
-        if (order != null) {
-            order.setPaymentStatus(request.getPaymentStatus());
-            orderRepo.save(order);
+
+        order.setPaymentStatus(request.getPaymentStatus());
+
+        switch (request.getPaymentStatus()) {
+
+            case SUCCESS -> {
+                if (order.getOrderStatus() == OrderStatus.PENDING) {
+                    order.setOrderStatus(OrderStatus.CONFIRMED);
+                }
+            }
+
+            case FAILED -> {
+                order.setOrderStatus(OrderStatus.PENDING);
+            }
+
+            case REFUNDED -> {
+                order.setOrderStatus(OrderStatus.CANCELLED);
+            }
+
+            default -> {
+                // no-op
+            }
         }
 
-        String message = resolveStatusMessage(request.getPaymentStatus());
-        return paymentMapper.toPaymentStatusResponse(payment, message);
+        orderRepo.save(order);
+
+        return paymentMapper.toPaymentStatusResponse(
+                savedPayment,
+                "Payment status updated successfully"
+        );
     }
 
     @Override

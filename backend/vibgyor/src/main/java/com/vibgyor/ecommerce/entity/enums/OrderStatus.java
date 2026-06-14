@@ -3,10 +3,13 @@ package com.vibgyor.ecommerce.entity.enums;
 public enum OrderStatus {
     PENDING,
     CONFIRMED,
+    PROCESSING,
+    PACKED,
     SHIPPED,
+    OUT_FOR_DELIVERY,
     DELIVERED,
     CANCELLED,
-    PROCESSING,
-    DISPATCHED,
-    PLACED
+    RETURN_REQUESTED,
+    RETURNED,
+    REFUNDED
 }

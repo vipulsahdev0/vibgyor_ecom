@@ -29,13 +29,19 @@ public class DashboardMapper {
             BigDecimal totalSales,
             BigDecimal averageOrderValue,
             long paidOrderCount,
-            long totalPaymentCount
+            long totalPaymentCount,
+            long successPayments,
+            long failedPayments,
+            long pendingPayments
     ) {
         return SalesStatsResponse.builder()
                 .totalSales(totalSales)
                 .averageOrderValue(averageOrderValue)
                 .paidOrderCount(paidOrderCount)
                 .totalPaymentCount(totalPaymentCount)
+                .successPayments(successPayments)
+                .failedPayments(failedPayments)
+                .pendingPayments(pendingPayments)
                 .build();
     }
 

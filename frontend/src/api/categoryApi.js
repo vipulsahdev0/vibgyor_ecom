@@ -7,7 +7,7 @@ export const getCategories = async () => {
 
   return response.data.map((item) => ({
     id: item.id,
-    name: item.name,
+    categoryName: item.categoryName ?? item.name,
     description: item.description,
     imageUrl: item.imageUrl,
     status: item.status,

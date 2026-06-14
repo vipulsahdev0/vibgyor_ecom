@@ -9,7 +9,12 @@ import useCart from "../../hooks/useCart";
 import useWishlist from "../../hooks/useWishlist";
 
 export default function Navbar() {
-  const { user, logout, isAdmin } = useAuth();
+  const {
+    user,
+    logout,
+    isAdmin,
+    isAuthenticated,
+  } = useAuth();
   const { cart } = useCart();
   const { wishlist } = useWishlist();
   const navigate = useNavigate();

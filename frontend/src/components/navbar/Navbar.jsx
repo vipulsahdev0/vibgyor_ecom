@@ -123,6 +123,14 @@ export default function Navbar() {
         <div className="hidden items-center gap-1.5 md:flex">
           {user ? (
             <>
+              {isAuthenticated && (
+                <Link
+                  to="/account/orders"
+                  className="..."
+                >
+                  Orders
+                </Link>
+              )}
               {/* Wishlist */}
               <Link to="/account/wishlist" className={iconBtn} aria-label="Wishlist" title="Wishlist">
                 <Heart size={20} />

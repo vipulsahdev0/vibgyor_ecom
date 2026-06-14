@@ -14,6 +14,11 @@ public interface AddressRepo extends JpaRepository<Address, Long> {
 
     Optional<Address> findByUserAndIsDefaultTrue(User user);
 
+    Optional<Address> findByIdAndUser(
+            Long id,
+            User user
+    );
+
     List<Address> findByUserAndAddressType(User user, AddressType addressType);
 
 }

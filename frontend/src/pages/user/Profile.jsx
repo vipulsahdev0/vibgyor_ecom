@@ -5,11 +5,11 @@ import useAuth from "../../hooks/useAuth";
 import { getUserProfile } from "../../api/userApi";
 import {
   getUserAddresses, addAddress, updateAddress,
-  deleteAddress, setDefaultAddress,
+  deleteAddress, setDefaultAddress, getAddressById
 } from "../../api/addressApi";
 import UserProfileCard from "../../components/users/UserProfileCard";
-import AddressCard     from "../../components/address/AddressCard";
-import AddressForm     from "../../components/address/AddressForm";
+import AddressCard from "../../components/address/AddressCard";
+import AddressForm from "../../components/address/AddressForm";
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────
 function SkeletonBlock({ className = "" }) {
@@ -55,30 +55,30 @@ function AddressSkeleton() {
 // ── normalizer (unchanged) ────────────────────────────────────────────────
 function normalizeAddressPayload(formData) {
   return {
-    fullName:     formData.fullName?.trim()     || "",
-    mobile:       formData.mobile?.trim()       || "",
+    fullName: formData.fullName?.trim() || "",
+    mobile: formData.mobile?.trim() || "",
     addressLine1: formData.addressLine1?.trim() || "",
     addressLine2: formData.addressLine2?.trim() || "",
-    city:         formData.city?.trim()         || "",
-    state:        formData.state?.trim()        || "",
-    country:      formData.country?.trim()      || "",
-    zipCode:      formData.zipCode?.trim()      || "",
-    addressType:  formData.addressType          || "SHIPPING",
-    isDefault:    Boolean(formData.isDefault),
+    city: formData.city?.trim() || "",
+    state: formData.state?.trim() || "",
+    country: formData.country?.trim() || "",
+    zipCode: formData.zipCode?.trim() || "",
+    addressType: formData.addressType || "SHIPPING",
+    isDefault: Boolean(formData.isDefault),
   };
 }
 
 export default function Profile() {
   const { user, loading } = useAuth();
 
-  const [profile,        setProfile]        = useState(null);
-  const [addresses,      setAddresses]      = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [addresses, setAddresses] = useState([]);
   const [editingAddress, setEditingAddress] = useState(null);
-  const [showForm,       setShowForm]       = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [addressLoading, setAddressLoading] = useState(true);
-  const [saving,         setSaving]         = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const userId = user?.userId ?? user?.id ?? null;
 
@@ -178,10 +178,26 @@ export default function Profile() {
     }
   };
 
-  const handleEdit = (address) => {
-    setEditingAddress(address);
-    setShowForm(true);
-    setTimeout(() => document.getElementById("address-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  const handleEdit = async (address) => {
+    try {
+      const addressId = address?.id ?? address?.addressId;
+
+      const fullAddress = await getAddressById(
+        user.userId,
+        addressId
+      );
+
+      setEditingAddress(fullAddress);
+      setShowForm(true);
+
+    } catch (err) {
+      console.error(err);
+
+      toast.error(
+        err?.response?.data?.message ||
+        "Unable to load address"
+      );
+    }
   };
 
   const handleCancelForm = () => {

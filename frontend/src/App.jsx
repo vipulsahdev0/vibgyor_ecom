@@ -85,7 +85,10 @@ export default function App() {
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="checkout" element={<Checkout />} />
           <Route path="orders" element={<UserOrders />} />
-          <Route path="payment-success" element={<PaymentSuccess />} />
+          <Route
+            path="payment-success/:orderId"
+            element={<PaymentSuccess />}
+          />
         </Route>
 
         <Route path="/profile" element={<Navigate to="/account/profile" replace />} />

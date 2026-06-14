@@ -8,21 +8,29 @@ const formatCurrency = (amount) =>
 
 const getBadgeClass = (s = "") => {
   const v = s.toUpperCase();
-  if (["SUCCESS","PAID","COMPLETED"].includes(v)) return "bg-emerald-100 text-emerald-700";
-  if (["PENDING","PROCESSING"].includes(v))        return "bg-amber-100 text-amber-700";
-  if (["FAILED","CANCELLED"].includes(v))          return "bg-rose-100 text-rose-700";
+  if (["SUCCESS", "PAID", "COMPLETED"].includes(v)) return "bg-emerald-100 text-emerald-700";
+  if (["PENDING", "PROCESSING"].includes(v)) return "bg-amber-100 text-amber-700";
+  if (["FAILED", "CANCELLED"].includes(v)) return "bg-rose-100 text-rose-700";
   return "bg-slate-100 text-slate-600";
 };
 
 const formatMethod = (m = "") =>
-  m.replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  m
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
 export default function PaymentSuccess() {
   const { orderId } = useParams();
-  const location    = useLocation();
+  const location = useLocation();
 
-  const { orderNumber, paymentMethod, totalAmount, paymentStatus } = location.state || {};
-
+  const {
+    orderNumber = orderId,
+    paymentMethod = "",
+    totalAmount = null,
+    paymentStatus = "PENDING",
+  } = location.state || {};
+  
   if (!orderId && !orderNumber) return <Navigate to="/account/orders" replace />;
 
   return (

@@ -4,10 +4,14 @@ import com.vibgyor.ecommerce.dto.request.auth.LoginRequest;
 import com.vibgyor.ecommerce.dto.request.auth.RegisterRequest;
 import com.vibgyor.ecommerce.dto.response.auth.AuthResponse;
 import com.vibgyor.ecommerce.dto.response.auth.LoginResponse;
+import com.vibgyor.ecommerce.entity.Cart;
 import com.vibgyor.ecommerce.entity.User;
+import com.vibgyor.ecommerce.entity.Wishlist;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.mapper.AuthMapper;
+import com.vibgyor.ecommerce.repository.CartRepo;
 import com.vibgyor.ecommerce.repository.UserRepo;
+import com.vibgyor.ecommerce.repository.WishlistRepo;
 import com.vibgyor.ecommerce.security.CustomUserDetails;
 import com.vibgyor.ecommerce.security.JwtService;
 import com.vibgyor.ecommerce.service.AuthService;
@@ -27,6 +31,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    private final CartRepo cartRepo;
+    private final WishlistRepo wishlistRepo;
+
     @Override
     public AuthResponse register(RegisterRequest request) {
 
@@ -43,6 +50,22 @@ public class AuthServiceImpl implements AuthService {
         User user = AuthMapper.toEntity(request, encodedPassword);
 
         User savedUser = userRepo.save(user);
+
+        if (cartRepo.findByUserId(savedUser.getId()).isEmpty()) {
+            Cart cart = Cart.builder()
+                    .user(savedUser)
+                    .build();
+
+            cartRepo.save(cart);
+        }
+
+        if (wishlistRepo.findByUserId(savedUser.getId()).isEmpty()) {
+            Wishlist wishlist = Wishlist.builder()
+                    .user(savedUser)
+                    .build();
+
+            wishlistRepo.save(wishlist);
+        }
 
         CustomUserDetails userDetails = new CustomUserDetails(savedUser);
 

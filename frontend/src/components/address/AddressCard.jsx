@@ -67,7 +67,7 @@ export default function AddressCard({
           </button>
         )}
 
-        {onDelete && (
+        {onDelete && !address?.isDefault && (
           <button
             type="button"
             onClick={() => onDelete(addressId)}

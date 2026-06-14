@@ -137,8 +137,9 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepo.save(savedOrder);
 
-        // Clear cart
-        cartItemRepo.deleteByCart(cart);
+        cart.getCartItems().clear();
+
+        cartRepo.save(cart);
 
         Order orderWithItems = orderRepo.findByIdWithItems(savedOrder.getId())
                 .orElse(savedOrder);

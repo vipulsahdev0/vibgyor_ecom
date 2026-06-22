@@ -1,15 +1,11 @@
 package com.vibgyor.ecommerce.entity.enums;
 
 public enum OrderStatus {
-    PENDING,
-    CONFIRMED,
+    PENDING_PAYMENT,   // created but waiting for payment
+    CONFIRMED,         // payment success, stock reduced
     PROCESSING,
-    PACKED,
     SHIPPED,
-    OUT_FOR_DELIVERY,
     DELIVERED,
     CANCELLED,
-    RETURN_REQUESTED,
-    RETURNED,
     REFUNDED
 }

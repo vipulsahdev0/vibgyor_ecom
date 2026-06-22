@@ -3,10 +3,7 @@ package com.vibgyor.ecommerce.dto.request.payment;
 import com.vibgyor.ecommerce.entity.enums.PaymentMethod;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 
@@ -26,5 +23,6 @@ public class PaymentRequest {
     @NotNull(message = "Payment method is required")
     private PaymentMethod paymentMethod;
 
-    private String transactionId; // provided by payment gateway; optional for COD
+    // Optional manual transaction id (e.g., for offline payment or reference)
+    private String transactionId;
 }

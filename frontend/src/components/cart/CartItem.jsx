@@ -38,6 +38,7 @@ export default function CartItem({ item, onRemove, onUpdate, loading = false }) 
           <p className="mt-1 text-xs text-slate-400">{formatCurrency(unitPrice)} each</p>
         </div>
 
+
         {/* Qty controls + remove */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Stepper */}
@@ -83,9 +84,11 @@ export default function CartItem({ item, onRemove, onUpdate, loading = false }) 
       {/* Line total */}
       <div className="flex items-center justify-end sm:flex-col sm:items-end sm:justify-between shrink-0">
         <p className="text-base font-black text-indigo-600 tabular-nums">
+          
           {formatCurrency(lineTotal)}
         </p>
       </div>
+      
     </article>
   );
 }

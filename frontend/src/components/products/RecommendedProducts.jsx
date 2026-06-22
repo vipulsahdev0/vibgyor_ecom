@@ -4,6 +4,13 @@ import { Sparkles } from "lucide-react";
 export default function RecommendedProducts({ products }) {
   if (!products?.length) return null;
 
+  products
+    .filter(
+      p =>
+        p.status === "ACTIVE" &&
+        p.stockQuantity > 0
+    )
+
   return (
     <section className="mt-16 space-y-6">
       <div className="flex items-end justify-between gap-4">

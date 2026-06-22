@@ -10,6 +10,8 @@ import com.vibgyor.ecommerce.dto.response.product.ProductSummaryResponse;
 import com.vibgyor.ecommerce.entity.Category;
 import com.vibgyor.ecommerce.entity.Product;
 import com.vibgyor.ecommerce.entity.ProductImage;
+import com.vibgyor.ecommerce.entity.enums.Status;
+import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
 import com.vibgyor.ecommerce.mapper.ProductMapper;
 import com.vibgyor.ecommerce.repository.CategoryRepo;
 import com.vibgyor.ecommerce.repository.ProductImageRepo;
@@ -20,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -66,6 +67,15 @@ public class ProductServiceImpl implements ProductService {
         List<ProductImage> savedImages = productImageRepo.findByProductOrderByDisplayOrderAsc(updatedProduct);
 
         return ProductMapper.toResponse(updatedProduct, savedImages);
+    }
+
+    @Override
+    public ProductResponse updateProductStatus(Long id, Status status) {
+        Product product = findProductById(id);
+        product.setStatus(status);
+        Product updated = productRepo.save(product);
+        List<ProductImage> images = productImageRepo.findByProductOrderByDisplayOrderAsc(updated);
+        return ProductMapper.toResponse(updated, images);
     }
 
     @Override
@@ -116,27 +126,30 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
     }
 
+    // ── Validation helpers ────────────────────────────────────────────────
+
     private void validateProductRequest(ProductRequest request) {
         if (request.getDiscountedPrice() != null
                 && request.getDiscountedPrice().compareTo(request.getPrice()) > 0) {
-            throw new RuntimeException("Discounted price cannot be greater than actual price");
+            throw new IllegalArgumentException("Discounted price cannot be greater than actual price");
         }
     }
 
     private void validateProductRequestForUpdate(ProductUpdateRequest request) {
         if (request.getDiscountedPrice() != null
                 && request.getDiscountedPrice().compareTo(request.getPrice()) > 0) {
-            throw new RuntimeException("Discounted price cannot be greater than actual price");
+            throw new IllegalArgumentException("Discounted price cannot be greater than actual price");
         }
     }
 
     private void validateCreateConstraints(ProductRequest request) {
         if (productRepo.existsByNameIgnoreCase(request.getName())) {
-            throw new RuntimeException("Product already exists with name: " + request.getName());
+            throw new IllegalArgumentException("Product already exists with name: " + request.getName());
         }
 
-        if (request.getSku() != null && !request.getSku().isBlank() && productRepo.existsBySku(request.getSku())) {
-            throw new RuntimeException("Product already exists with SKU: " + request.getSku());
+        if (request.getSku() != null && !request.getSku().isBlank()
+                && productRepo.existsBySku(request.getSku())) {
+            throw new IllegalArgumentException("Product already exists with SKU: " + request.getSku());
         }
     }
 
@@ -150,27 +163,35 @@ public class ProductServiceImpl implements ProductService {
                                 && !product.getId().equals(id));
 
         if (duplicateName) {
-            throw new RuntimeException("Another product already exists with name: " + request.getName());
+            throw new IllegalArgumentException(
+                    "Another product already exists with name: " + request.getName());
         }
 
         if (request.getSku() != null && !request.getSku().isBlank()) {
             productRepo.findBySku(request.getSku())
                     .filter(existing -> !existing.getId().equals(id))
                     .ifPresent(existing -> {
-                        throw new RuntimeException("Another product already exists with SKU: " + request.getSku());
+                        throw new IllegalArgumentException(
+                                "Another product already exists with SKU: " + request.getSku());
                     });
         }
     }
 
+    // ── Lookup helpers ────────────────────────────────────────────────────
+
     private Category findCategoryById(Long categoryId) {
         return categoryRepo.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Category not found with id: " + categoryId));
     }
 
     private Product findProductById(Long id) {
         return productRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Product not found with id: " + id));
     }
+
+    // ── Image helper ──────────────────────────────────────────────────────
 
     private void saveProductImages(Product product, List<ProductImageRequest> imageRequests) {
         if (imageRequests == null || imageRequests.isEmpty()) {
@@ -196,6 +217,8 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    // ── Filter helpers ────────────────────────────────────────────────────
+
     private List<Product> resolveProductsByBaseFilter(ProductFilterRequest filterRequest) {
         if (filterRequest == null) {
             return productRepo.findAll();
@@ -207,8 +230,7 @@ public class ProductServiceImpl implements ProductService {
                 return productRepo.findByCategoryAndStatusAndStockQuantityGreaterThan(
                         category,
                         filterRequest.getStatus(),
-                        0
-                );
+                        0);
             }
             return productRepo.findByCategoryAndStatus(category, filterRequest.getStatus());
         }
@@ -226,7 +248,8 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (filterRequest.getMinPrice() != null && filterRequest.getMaxPrice() != null) {
-            return productRepo.findByPriceBetween(filterRequest.getMinPrice(), filterRequest.getMaxPrice());
+            return productRepo.findByPriceBetween(
+                    filterRequest.getMinPrice(), filterRequest.getMaxPrice());
         }
 
         if (Boolean.TRUE.equals(filterRequest.getInStock())) {
@@ -237,12 +260,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private boolean matchesKeyword(Product product, ProductFilterRequest filterRequest) {
-        if (filterRequest == null || filterRequest.getKeyword() == null || filterRequest.getKeyword().isBlank()) {
+        if (filterRequest == null
+                || filterRequest.getKeyword() == null
+                || filterRequest.getKeyword().isBlank()) {
             return true;
         }
-
         return product.getName() != null
-                && product.getName().toLowerCase().contains(filterRequest.getKeyword().toLowerCase());
+                && product.getName().toLowerCase()
+                .contains(filterRequest.getKeyword().toLowerCase());
     }
 
     private boolean matchesPriceRange(Product product, ProductFilterRequest filterRequest) {
@@ -254,11 +279,13 @@ public class ProductServiceImpl implements ProductService {
                 ? product.getDiscountedPrice()
                 : product.getPrice();
 
-        if (filterRequest.getMinPrice() != null && finalPrice.compareTo(filterRequest.getMinPrice()) < 0) {
+        if (filterRequest.getMinPrice() != null
+                && finalPrice.compareTo(filterRequest.getMinPrice()) < 0) {
             return false;
         }
 
-        if (filterRequest.getMaxPrice() != null && finalPrice.compareTo(filterRequest.getMaxPrice()) > 0) {
+        if (filterRequest.getMaxPrice() != null
+                && finalPrice.compareTo(filterRequest.getMaxPrice()) > 0) {
             return false;
         }
 

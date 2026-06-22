@@ -1,62 +1,96 @@
 import api from "./axios";
 
-const getCartBasePath = (userId) =>
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
+
+const CART_BASE = (userId) =>
   `/api/users/${userId}/cart`;
 
+/* =========================
+   Get Cart
+========================= */
 export const getCart = async (userId) => {
-  try {
-    const response = await api.get(
-      getCartBasePath(userId)
-    );
-    return response.data || {
-      items: [],
-      totalItems: 0,
-      subtotal: 0,
-      discountTotal: 0,
-      grandTotal: 0,
-    };
-  } catch (error) {
-    // Return empty cart structure on error, let context handle the error
-    throw error;
-  }
+  const response = await api.get(
+    CART_BASE(userId)
+  );
+
+  return unwrap(response);
 };
 
-export const addToCart = async (userId, data) => {
+/* =========================
+   Add Item To Cart
+========================= */
+export const addToCart = async (
+  userId,
+  productId,
+  quantity = 1
+) => {
   const response = await api.post(
-    `${getCartBasePath(userId)}/items`,
-    data
+    `${CART_BASE(userId)}/items`,
+    {
+      productId,
+      quantity,
+    }
   );
-  return response.data;
+
+  return unwrap(response);
 };
 
-export const updateCartItem = async (userId, data) => {
+/* =========================
+   Update Cart Item
+========================= */
+export const updateCartItem = async (
+  userId,
+  productId,
+  quantity
+) => {
   const response = await api.put(
-    `${getCartBasePath(userId)}/items`,
-    data
+    `${CART_BASE(userId)}/items`,
+    {
+      productId,
+      quantity,
+    }
   );
-  return response.data;
+
+  return unwrap(response);
 };
 
+/* =========================
+   Remove Cart Item
+========================= */
 export const removeCartItem = async (
   userId,
-  productId
+  cartItemId
 ) => {
   const response = await api.delete(
-    `${getCartBasePath(userId)}/items/${productId}`
+    `${CART_BASE(userId)}/items/${cartItemId}`
   );
-  return response.data;
+
+  return unwrap(response);
 };
 
-export const getCartSummary = async (userId) => {
-  const response = await api.get(
-    `${getCartBasePath(userId)}/summary`
-  );
-  return response.data;
-};
-
-export const clearCart = async (userId) => {
+/* =========================
+   Clear Entire Cart
+========================= */
+export const clearCart = async (
+  userId
+) => {
   const response = await api.delete(
-    getCartBasePath(userId)
+    `${CART_BASE(userId)}`
   );
-  return response.data;
+
+  return unwrap(response);
+};
+
+/* =========================
+   Cart Summary
+========================= */
+export const getCartSummary = async (
+  userId
+) => {
+  const response = await api.get(
+    `${CART_BASE(userId)}/summary`
+  );
+
+  return unwrap(response);
 };

@@ -1,9 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import {
-  ShoppingCart, Heart, User, LogOut, Menu, X,
-  LayoutDashboard, ChevronDown, Sparkles,
-} from "lucide-react";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { ShoppingCart, Heart, User, LogOut, Menu, X, LayoutDashboard, ChevronDown, Search } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
 import useCart from "../../hooks/useCart";
 import useWishlist from "../../hooks/useWishlist";
@@ -52,14 +49,26 @@ export default function Navbar() {
     [wishlist]
   );
 
-  const handleLogout = () => {
-    logout();
-    setMobileOpen(false);
-    setUserMenuOpen(false);
-    navigate("/", { replace: true });
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      setMobileOpen(false);
+      setUserMenuOpen(false);
+      navigate("/", { replace: true });
+    }
   };
 
-  const closeMobileMenu = () => setMobileOpen(false);
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+  };
+
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
 
   // ── Shared style constants ───────────────────────────────────────────────
   const navLinkClass = ({ isActive }) =>
@@ -75,7 +84,7 @@ export default function Navbar() {
     }`;
 
   const iconBtn =
-    "relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600";
+    "relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-600 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-violet-200 hover:text-violet-600";
 
   const badge =
     "absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[18px] text-white ring-2 ring-white";
@@ -93,13 +102,30 @@ export default function Navbar() {
         {/* Brand */}
         <Link
           to="/"
-          onClick={closeMobileMenu}
-          className="flex items-center gap-2 font-black tracking-tight text-slate-900 hover:opacity-80 transition-opacity shrink-0"
+          className="flex items-center gap-3"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-            <Sparkles className="w-4 h-4 text-white" />
-          </span>
-          <span className="text-lg text-indigo-600">Vibgyor</span>
+          <div
+            className="
+    flex h-10 w-10 items-center
+    justify-center rounded-2xl
+    bg-gradient-to-br
+    from-violet-600
+    to-fuchsia-600
+    text-white shadow-lg
+    "
+          >
+            V
+          </div>
+
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-slate-900">
+              Vibgyor
+            </h1>
+
+            <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400">
+              E-Commerce
+            </p>
+          </div>
         </Link>
 
         {/* Desktop nav links */}
@@ -124,6 +150,38 @@ export default function Navbar() {
           )}
         </ul>
 
+        <div className="hidden lg:flex flex-1 max-w-xl mx-10">
+          <div className="relative w-full">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+
+            <input
+              type="search"
+              placeholder="Search products..."
+              aria-label="Search products"
+              className="
+      w-full
+      rounded-2xl
+      border
+      border-slate-200
+      bg-slate-50
+      py-3
+      pl-11
+      pr-4
+      text-sm
+      outline-none
+      transition
+      focus:border-violet-500
+      focus:bg-white
+      focus:ring-4
+      focus:ring-violet-100
+      "
+            />
+          </div>
+        </div>
+
         {/* Desktop right actions */}
         <div className="hidden items-center gap-1.5 md:flex">
           {user ? (
@@ -131,7 +189,7 @@ export default function Navbar() {
               {isAuthenticated && (
                 <Link
                   to="/account/orders"
-                  className="..."
+                  className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                 >
                   Orders
                 </Link>
@@ -156,7 +214,7 @@ export default function Navbar() {
                   aria-expanded={userMenuOpen}
                   className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-slate-100"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold uppercase text-white shrink-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-md">
                     {avatar}
                   </div>
                   <div className="hidden text-left lg:block">
@@ -173,40 +231,108 @@ export default function Navbar() {
 
                 {/* Dropdown panel */}
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-52 origin-top-right rounded-2xl border border-slate-100 bg-white py-1.5 shadow-xl shadow-slate-200/60 ring-1 ring-black/5">
-                    {/* Header */}
-                    <div className="border-b border-slate-50 px-4 pb-3 pt-2">
-                      <p className="truncate text-sm font-semibold text-slate-900">
-                        {user.firstName} {user.lastName}
-                      </p>
-                      <p className="truncate text-xs text-slate-400">{user.email}</p>
+                  <div
+                    className="
+  absolute right-0 z-50 mt-3 w-80
+  rounded-3xl
+  border border-violet-100
+  bg-white
+  shadow-2xl
+  overflow-hidden
+  backdrop-blur-xl
+"
+                  >
+                    {/* User Header */}
+                    <div className="p-5 bg-gradient-to-br from-violet-50 via-white to-indigo-50">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-semibold shadow-md">
+                          {avatar}
+                        </div>
+
+                        <div className="min-w-0">
+                          <h4 className="truncate font-semibold text-slate-900">
+                            {user.firstName} {user.lastName}
+                          </h4>
+
+                          <p className="truncate text-sm text-slate-500">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="py-1">
+                    {/* Menu Items */}
+                    <div className="p-2">
                       <Link
                         to="/account/profile"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        className="
+          flex items-center gap-3
+          rounded-2xl
+          px-4 py-3
+          text-sm font-medium
+          text-slate-700
+          transition
+          hover:bg-violet-50
+        "
                       >
-                        <User size={15} className="text-slate-400" /> My Profile
+                        <User size={18} />
+                        My Profile
                       </Link>
+
+                      <Link
+                        to="/account/orders"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="
+          flex items-center gap-3
+          rounded-2xl
+          px-4 py-3
+          text-sm font-medium
+          text-slate-700
+          transition
+          hover:bg-violet-50
+        "
+                      >
+                        <ShoppingCart size={18} />
+                        My Orders
+                      </Link>
+
                       {isAdmin && (
                         <Link
                           to="/admin/dashboard"
                           onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                          className="
+            flex items-center gap-3
+            rounded-2xl
+            px-4 py-3
+            text-sm font-medium
+            text-violet-700
+            transition
+            hover:bg-violet-50
+          "
                         >
-                          <LayoutDashboard size={15} className="text-indigo-500" /> Admin Dashboard
+                          <LayoutDashboard size={18} />
+                          Admin Dashboard
                         </Link>
                       )}
                     </div>
 
-                    <div className="border-t border-slate-50 pt-1">
+                    {/* Logout */}
+                    <div className="border-t border-slate-100 p-2">
                       <button
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="
+          flex w-full items-center gap-3
+          rounded-2xl
+          px-4 py-3
+          text-sm font-medium
+          text-rose-600
+          transition
+          hover:bg-rose-50
+        "
                       >
-                        <LogOut size={15} /> Sign Out
+                        <LogOut size={18} />
+                        Logout
                       </button>
                     </div>
                   </div>
@@ -247,6 +373,18 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="border-t border-slate-100 bg-white md:hidden">
           <div className="mx-auto max-w-7xl space-y-1 px-4 py-3">
+
+            {user && (
+              <div className="mb-3 rounded-2xl bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {user.email}
+                </p>
+              </div>
+            )}
+
             <NavLink to="/" end className={mobileNavClass} onClick={closeMobileMenu}>Home</NavLink>
             <NavLink to="/products" className={mobileNavClass} onClick={closeMobileMenu}>Products</NavLink>
             <NavLink to="/categories" className={mobileNavClass} onClick={closeMobileMenu}>Categories</NavLink>

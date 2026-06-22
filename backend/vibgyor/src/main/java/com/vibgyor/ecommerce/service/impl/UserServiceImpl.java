@@ -1,17 +1,21 @@
 package com.vibgyor.ecommerce.service.impl;
 
+import com.vibgyor.ecommerce.dto.request.user.ChangePasswordRequest;
+import com.vibgyor.ecommerce.dto.request.user.UpdateProfileRequest;
 import com.vibgyor.ecommerce.dto.response.user.UserProfileResponse;
 import com.vibgyor.ecommerce.dto.response.user.UserResponse;
 import com.vibgyor.ecommerce.dto.response.user.UserSummaryResponse;
 import com.vibgyor.ecommerce.entity.User;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.entity.enums.UserRole;
+import com.vibgyor.ecommerce.exception.BadRequestException;
 import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
 import com.vibgyor.ecommerce.mapper.UserMapper;
 import com.vibgyor.ecommerce.repository.UserRepo;
 import com.vibgyor.ecommerce.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,6 +26,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepo userRepo;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse getUserById(Long userId) {
@@ -72,5 +77,39 @@ public class UserServiceImpl implements UserService {
         User updatedUser = userRepo.save(user);
 
         return userMapper.toUserResponse(updatedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        user.setFirstName(request.getFirstName().trim());
+        user.setLastName(request.getLastName() != null ? request.getLastName().trim() : null);
+        user.setMobile(request.getMobile().trim());
+
+        User updatedUser = userRepo.save(user);
+        return userMapper.toUserResponse(updatedUser);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        // Validate current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+
+        // Validate new + confirm
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("New password and confirm password do not match");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepo.save(user);
     }
 }

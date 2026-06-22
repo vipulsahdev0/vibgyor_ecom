@@ -1,39 +1,86 @@
 import api from "./axios";
 
-const getAddressBasePath = (userId) => `/api/users/${userId}/addresses`;
+const ADDRESS_BASE = (userId) =>
+  `/api/users/${userId}/addresses`;
+
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
 
 export const getUserAddresses = async (userId) => {
-  const res = await api.get(getAddressBasePath(userId));
-  return res.data;
+  const response = await api.get(
+    ADDRESS_BASE(userId)
+  );
+
+  return unwrap(response) || [];
 };
 
-export const addAddress = async (userId, data) => {
-  const res = await api.post(getAddressBasePath(userId), data);
-  return res.data;
+export const getAddressById = async (
+  userId,
+  addressId
+) => {
+  const response = await api.get(
+    `${ADDRESS_BASE(userId)}/${addressId}`
+  );
+
+  return unwrap(response);
 };
 
-export const updateAddress = async (userId, addressId, data) => {
-  const res = await api.put(`${getAddressBasePath(userId)}/${addressId}`, data);
-  return res.data;
+export const getDefaultAddress = async (
+  userId
+) => {
+  const response = await api.get(
+    `${ADDRESS_BASE(userId)}/default`
+  );
+
+  return unwrap(response);
 };
 
-export const getAddressById = async (userId, addressId) => {
-  const res = await api.get(`${getAddressBasePath(userId)}/${addressId}`);
-  return res.data;
+export const addAddress = async (
+  userId,
+  data
+) => {
+  const response = await api.post(
+    ADDRESS_BASE(userId),
+    data
+  );
+
+  return unwrap(response);
 };
 
-export const getDefaultAddress = async (userId) => {
-  const res = await api.get(`${getAddressBasePath(userId)}/default`);
-  return res.data;
+export const updateAddress = async (
+  userId,
+  addressId,
+  data
+) => {
+  const response = await api.put(
+    `${ADDRESS_BASE(userId)}/${addressId}`,
+    data
+  );
+
+  return unwrap(response);
 };
 
-export const setDefaultAddress = async (userId, addressId) => {
-  const res = await api.patch(`${getAddressBasePath(userId)}/default`, { addressId });
-  return res.data;
+export const setDefaultAddress = async (
+  userId,
+  addressId
+) => {
+  const response = await api.patch(
+    `${ADDRESS_BASE(userId)}/default`,
+    {
+      addressId,
+    }
+  );
+
+  return unwrap(response);
 };
 
-// Use this only if backend DELETE endpoint really exists.
-export const deleteAddress = async (userId, addressId) => {
-  const res = await api.delete(`${getAddressBasePath(userId)}/${addressId}`);
-  return res.data;
+export const deleteAddress = async (
+  userId,
+  addressId
+) => {
+  const response = await api.delete(
+    `${ADDRESS_BASE(userId)}/${addressId}`
+  );
+
+  return unwrap(response);
 };

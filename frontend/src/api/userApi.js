@@ -1,53 +1,123 @@
-import api, { USER_KEY } from "./axios";
+import api from "./axios";
 
 const USER_BASE = "/api/users";
 
-export const getCurrentUserId = () => {
-  try {
-    const rawUser = localStorage.getItem(USER_KEY);
-    if (!rawUser) return null;
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
 
-    const user = JSON.parse(rawUser);
-    return user?.id ?? user?.userId ?? null;
-  } catch {
-    return null;
-  }
+/* =========================
+   Current User Profile
+========================= */
+
+export const getUserProfile = async (
+  userId
+) => {
+  const response = await api.get(
+    `${USER_BASE}/${userId}`
+  );
+
+  return unwrap(response);
 };
 
-export const getUserById = async (userId) => {
-  const response = await api.get(`${USER_BASE}/${userId}`);
-  return response.data;
+/* =========================
+   Update Profile
+========================= */
+
+export const updateUserProfile = async (
+  userId,
+  data
+) => {
+  const response = await api.put(
+    `${USER_BASE}/${userId}`,
+    data
+  );
+
+  return unwrap(response);
 };
 
-export const getUserProfile = async (userId) => {
-  if (!userId) {
-    throw new Error("User ID is required to fetch profile.");
-  }
+/* =========================
+   Change Password
+========================= */
 
-  const response = await api.get(`${USER_BASE}/${userId}/profile`);
-  return response.data;
+export const changePassword = async (
+  userId,
+  data
+) => {
+  const response = await api.patch(
+    `${USER_BASE}/${userId}/password`,
+    data
+  );
+
+  return unwrap(response);
 };
 
-export const getMyProfile = async () => {
-  const userId = getCurrentUserId();
+/* =========================
+   Admin - Get All Users
+========================= */
 
-  if (!userId) {
-    throw new Error("Logged-in user not found. Please login again.");
-  }
+export const getAllUsers = async () => {
+  const response = await api.get(
+    USER_BASE
+  );
 
-  const response = await api.get(`${USER_BASE}/${userId}/profile`);
-  return response.data;
+  return Array.isArray(unwrap(response))
+    ? unwrap(response)
+    : [];
 };
 
-export const getAllUsers = async (params = {}) => {
-  const response = await api.get(USER_BASE, { params });
-  return response.data;
+/* =========================
+   Admin - Get User By Id
+========================= */
+
+export const getUserById = async (
+  userId
+) => {
+  const response = await api.get(
+    `${USER_BASE}/${userId}`
+  );
+
+  return unwrap(response);
 };
 
-export const updateUserStatus = async (userId, status) => {
-  const response = await api.patch(`${USER_BASE}/${userId}/status`, null, {
-    params: { status },
-  });
+/* =========================
+   Admin - Block User
+========================= */
 
-  return response.data;
+export const blockUser = async (
+  userId
+) => {
+  const response = await api.patch(
+    `${USER_BASE}/${userId}/block`
+  );
+
+  return unwrap(response);
 };
+
+/* =========================
+   Admin - Unblock User
+========================= */
+
+export const unblockUser = async (
+  userId
+) => {
+  const response = await api.patch(
+    `${USER_BASE}/${userId}/unblock`
+  );
+
+  return unwrap(response);
+};
+
+/* =========================
+   Admin - Delete User
+========================= */
+
+export const deleteUser = async (
+  userId
+) => {
+  const response = await api.delete(
+    `${USER_BASE}/${userId}`
+  );
+
+  return unwrap(response);
+};
+

@@ -1,3 +1,4 @@
+// PaymentMapper
 package com.vibgyor.ecommerce.mapper;
 
 import com.vibgyor.ecommerce.dto.response.payment.PaymentResponse;
@@ -15,25 +16,23 @@ public class PaymentMapper {
     public PaymentResponse toPaymentResponse(Payment payment) {
         if (payment == null) return null;
 
-        String orderNumber = payment.getOrder() != null
-                ? payment.getOrder().getOrderNumber()
-                : null;
-
-        Long orderId = payment.getOrder() != null
-                ? payment.getOrder().getId()
-                : null;
+        Long orderId = payment.getOrder() != null ? payment.getOrder().getId() : null;
+        String orderNumber = payment.getOrder() != null ? payment.getOrder().getOrderNumber() : null;
 
         return PaymentResponse.builder()
                 .id(payment.getId())
                 .orderId(orderId)
                 .orderNumber(orderNumber)
+                .paymentReference(payment.getPaymentReference())
+                .transactionId(payment.getTransactionId())
+                .providerResponse(payment.getProviderResponse())
                 .amount(payment.getAmount())
                 .paymentMethod(payment.getPaymentMethod())
-                .transactionId(payment.getTransactionId())
                 .paymentStatus(payment.getPaymentStatus())
                 .paymentDate(payment.getPaymentDate())
                 .failureReason(payment.getFailureReason())
                 .createdAt(payment.getCreatedAt())
+                .updatedAt(payment.getUpdatedAt())
                 .build();
     }
 

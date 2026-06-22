@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { getProducts } from "../../api/productApi";
 import { getCategories } from "../../api/categoryApi";
 import ProductGrid from "../../components/products/ProductGrid";
+import EmptyState from "../../components/shared/EmptyState";
 
 // ─── Toolbar Skeleton ─────────────────────────────────────────────────────────
 function ToolbarSkeleton() {
@@ -35,33 +36,6 @@ function FilterChip({ label, onRemove }) {
   );
 }
 
-// ─── Empty / No-results State ─────────────────────────────────────────────────
-function EmptyState({ search, categoryName, onClear }) {
-  const hasFilters = search || categoryName;
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
-        <Package className="w-7 h-7 text-slate-300" />
-      </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-1">
-        {hasFilters ? "No products match your filters" : "No products yet"}
-      </h3>
-      <p className="text-sm text-slate-400 max-w-xs mb-5">
-        {hasFilters
-          ? "Try adjusting your search or removing a filter."
-          : "Products will appear here once they are added."}
-      </p>
-      {hasFilters && (
-        <button
-          onClick={onClear}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-        >
-          Clear all filters
-        </button>
-      )}
-    </div>
-  );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Products() {
@@ -131,7 +105,7 @@ export default function Products() {
       const q = search.toLowerCase();
       list = list.filter(
         (p) =>
-          p.productName?.toLowerCase().includes(q) ||
+          p.name?.toLowerCase().includes(q) ||
           p.description?.toLowerCase().includes(q)
       );
     }
@@ -146,7 +120,7 @@ export default function Products() {
         list.sort((a, b) => Number(b.finalPrice ?? b.price ?? 0) - Number(a.finalPrice ?? a.price ?? 0));
         break;
       case "name":
-        list.sort((a, b) => a.productName?.localeCompare(b.productName));
+        list.sort((a, b) => a.name?.localeCompare(b.name));
         break;
       default:
         break;
@@ -276,7 +250,7 @@ export default function Products() {
                   >
                     <option value="">All Categories</option>
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.categoryName}</option>
+                      <option key={c.id} value={c.id}>{c.name ?? c.categoryName}</option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />

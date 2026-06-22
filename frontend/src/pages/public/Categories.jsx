@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { getCategories } from "../../api/categoryApi";
 import { Link } from "react-router-dom";
 import { Search, LayoutGrid, List, RefreshCw, Tag, ChevronRight, Package, Sparkles } from "lucide-react";
+import EmptyState from "../../components/shared/EmptyState";
 
 // ─── Skeleton Loader ──────────────────────────────────────────────────────────
 function CategorySkeleton() {
@@ -27,39 +28,6 @@ function CategorySkeleton() {
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
-function EmptyState({ query, onClear }) {
-  if (query) {
-    return (
-      <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
-          <Search className="w-7 h-7 text-slate-300" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-800 mb-1">No results for "{query}"</h3>
-        <p className="text-sm text-slate-400 mb-5 max-w-xs">
-          Try a different search term or clear the filter.
-        </p>
-        <button
-          onClick={onClear}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-        >
-          Clear search
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4">
-        <Tag className="w-7 h-7 text-indigo-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-1">No categories yet</h3>
-      <p className="text-sm text-slate-400 max-w-xs">
-        Active categories will appear here once they are created.
-      </p>
-    </div>
-  );
-}
 
 // ─── Per-category accent colors (cycles through palette) ─────────────────────
 const CATEGORY_COLORS = [

@@ -2,36 +2,106 @@ import api from "./axios";
 
 const ORDER_BASE = "/api/orders";
 
-export const placeOrder = async (userId, data) => {
-  const response = await api.post(`${ORDER_BASE}/users/${userId}`, data);
-  return response.data;
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
+
+/* =========================
+   Place Order
+========================= */
+export const placeOrder = async (
+  userId,
+  orderData
+) => {
+  const response = await api.post(
+    `${ORDER_BASE}/users/${userId}`,
+    orderData
+  );
+
+  return unwrap(response);
 };
 
-export const getOrderById = async (orderId) => {
-  const response = await api.get(`${ORDER_BASE}/${orderId}`);
-  return response.data;
+/* =========================
+   User Orders
+========================= */
+export const getUserOrders = async (
+  userId
+) => {
+  const response = await api.get(
+    `${ORDER_BASE}/users/${userId}`
+  );
+
+  return Array.isArray(unwrap(response))
+    ? unwrap(response)
+    : [];
 };
 
-export const getUserOrders = async (userId) => {
-  const response = await api.get(`${ORDER_BASE}/users/${userId}`);
-  return response.data;
+/* =========================
+   Order Details
+========================= */
+export const getOrderById = async (
+  orderId
+) => {
+  const response = await api.get(
+    `${ORDER_BASE}/${orderId}`
+  );
+
+  return unwrap(response);
 };
 
+/* =========================
+   Search By Order Number
+========================= */
+export const getOrderByNumber = async (
+  orderNumber
+) => {
+  const response = await api.get(
+    `${ORDER_BASE}/number/${orderNumber}`
+  );
+
+  return unwrap(response);
+};
+
+/* =========================
+   Admin Orders
+========================= */
 export const getAllOrders = async () => {
-  const response = await api.get(ORDER_BASE);
-  return response.data;
+  const response = await api.get(
+    ORDER_BASE
+  );
+
+  return Array.isArray(unwrap(response))
+    ? unwrap(response)
+    : [];
 };
 
-export const cancelOrder = async (orderId) => {
-  const response = await api.patch(`${ORDER_BASE}/${orderId}/cancel`);
-  return response.data;
-};
-
-export const updateOrderStatus = async (orderId, data) => {
-  const response = await api.patch(`${ORDER_BASE}/${orderId}/status`, 
+/* =========================
+   Update Order Status
+========================= */
+export const updateOrderStatus = async (
+  orderId,
+  orderStatus,
+  paymentStatus = null
+) => {
+  const response = await api.patch(
+    `${ORDER_BASE}/${orderId}/status`,
     {
-      orderStatus: status
+      orderStatus,
+      paymentStatus,
     }
   );
-  return response.data;
+
+  return unwrap(response);
+};
+
+/* =========================
+   Cancel Order
+========================= */
+export const cancelOrder = async (
+  orderId
+) => {
+  const response = await api.patch(
+    `${ORDER_BASE}/${orderId}/cancel`
+  );
+
+  return unwrap(response);
 };

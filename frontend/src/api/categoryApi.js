@@ -2,52 +2,74 @@ import api from "./axios";
 
 const CATEGORY_BASE = "/api/categories";
 
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
+
+/* =========================
+   Public Categories
+========================= */
+
 export const getCategories = async () => {
   const response = await api.get(CATEGORY_BASE);
 
-  return response.data.map((item) => ({
-    id: item.id,
-    categoryName: item.categoryName ?? item.name,
-    description: item.description,
-    imageUrl: item.imageUrl,
-    status: item.status,
-    productCount: item.productCount,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-  }));
+  const categories = unwrap(response);
+
+  return Array.isArray(categories)
+    ? categories
+    : [];
 };
 
-export const createCategory = async (
-  data
-) => {
-  const response = await api.post(
-    CATEGORY_BASE,
-    data
+export const getCategoryById = async (categoryId) => {
+  const response = await api.get(
+    `${CATEGORY_BASE}/${categoryId}`
   );
 
-  return response.data;
+  return unwrap(response);
+};
+
+/* =========================
+   Admin Category APIs
+========================= */
+
+export const createCategory = async (payload) => {
+  const response = await api.post(
+    CATEGORY_BASE,
+    payload
+  );
+
+  return unwrap(response);
 };
 
 export const updateCategory = async (
-  id,
-  data
+  categoryId,
+  payload
 ) => {
   const response = await api.put(
-    `${CATEGORY_BASE}/${id}`,
-    data
+    `${CATEGORY_BASE}/${categoryId}`,
+    payload
   );
 
-  return response.data;
+  return unwrap(response);
 };
 
 export const updateCategoryStatus = async (
-  id,
+  categoryId,
   status
 ) => {
   const response = await api.patch(
-    `${CATEGORY_BASE}/${id}/status`,
+    `${CATEGORY_BASE}/${categoryId}/status`,
     { status }
   );
 
-  return response.data;
+  return unwrap(response);
+};
+
+export const deleteCategory = async (
+  categoryId
+) => {
+  const response = await api.delete(
+    `${CATEGORY_BASE}/${categoryId}`
+  );
+
+  return unwrap(response);
 };

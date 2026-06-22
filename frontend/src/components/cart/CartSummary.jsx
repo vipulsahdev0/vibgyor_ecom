@@ -1,16 +1,16 @@
 import { Link } from "react-router-dom";
-import { ShoppingBag, Tag, Truck, Loader2, ArrowRight } from "lucide-react";
+import { ShoppingBag, Tag, Truck, Loader2, ArrowRight, Clock } from "lucide-react";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(amount ?? 0));
 
 export default function CartSummary({
-  subtotal  = 0,
-  discount  = 0,
-  total     = 0,
+  subtotal = 0,
+  discount = 0,
+  total = 0,
   totalItems = 0,
   onClear,
-  clearing  = false,
+  clearing = false,
 }) {
   const hasDiscount = Number(discount) > 0;
 

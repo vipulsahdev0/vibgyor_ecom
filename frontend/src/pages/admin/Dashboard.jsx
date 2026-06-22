@@ -2,28 +2,50 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Users, Package, Tag, ClipboardList,
-  TrendingUp, RefreshCw, AlertCircle,
-  IndianRupee, BarChart3, ShoppingCart, CheckCircle2, XCircle, Clock,
+  TrendingUp, RefreshCw,
+  BarChart3, ShoppingCart, CheckCircle2, XCircle, Clock,
+  CreditCard, AlertTriangle,
 } from "lucide-react";
-import { getDashboardData } from "../../api/dashboardApi";
+import { getDashboardSummary } from "../../api/dashboardApi";
+import StatCard from "../../components/shared/StatCard";
+import ErrorBanner from "../../components/shared/ErrorBanner";
 
-const initialDashboard = {
-  counts: { userCount: 0, productCount: 0, categoryCount: 0, orderCount: 0 },
-  salesStats: { totalSales: 0, averageOrderValue: 0, paidOrderCount: 0, totalPaymentCount: 0 },
-  orderStats: { totalOrders: 0, pendingOrders: 0, completedOrders: 0, cancelledOrders: 0 },
-};
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatCurrency = (v) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(v || 0));
 
 const formatNum = (v) => new Intl.NumberFormat("en-IN").format(Number(v || 0));
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// ─── Initial state aligned with DashboardSummaryResponse DTO ─────────────────
+const initialDashboard = {
+  // AdminCountsResponse
+  counts: { userCount: 0, productCount: 0, categoryCount: 0, orderCount: 0 },
+  // SalesStatsResponse — now includes successPayments, failedPayments, pendingPayments
+  salesStats: {
+    totalSales: 0,
+    averageOrderValue: 0,
+    paidOrderCount: 0,
+    totalPaymentCount: 0,
+    successPayments: 0,
+    failedPayments: 0,
+    pendingPayments: 0,
+  },
+  // OrderStatsResponse
+  orderStats: { totalOrders: 0, pendingOrders: 0, completedOrders: 0, cancelledOrders: 0 },
+};
+
+// ─── Sub-components ────────────────────────────────────────────────────────────
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-8 w-48 animate-pulse rounded-xl bg-slate-200" />
+      <div className="flex items-end justify-between">
+        <div className="space-y-2">
+          <div className="h-8 w-48 animate-pulse rounded-xl bg-slate-200" />
+          <div className="h-4 w-64 animate-pulse rounded bg-slate-100" />
+        </div>
+        <div className="h-9 w-28 animate-pulse rounded-xl bg-slate-200" />
+      </div>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-slate-200 bg-white" />
@@ -31,33 +53,8 @@ function DashboardSkeleton() {
       </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-52 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          <div key={i} className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-white" />
         ))}
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, Icon, accent, sub }) {
-  const accentMap = {
-    indigo: { bg: "bg-indigo-50", icon: "text-indigo-500", val: "text-indigo-600" },
-    emerald: { bg: "bg-emerald-50", icon: "text-emerald-500", val: "text-emerald-600" },
-    amber: { bg: "bg-amber-50", icon: "text-amber-500", val: "text-amber-600" },
-    pink: { bg: "bg-pink-50", icon: "text-pink-500", val: "text-pink-600" },
-  };
-  const c = accentMap[accent] ?? accentMap.indigo;
-
-  return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</p>
-          <p className={`mt-2 text-2xl font-black tabular-nums sm:text-3xl ${c.val}`}>{value}</p>
-          {sub && <p className="mt-0.5 text-[11px] text-slate-400">{sub}</p>}
-        </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${c.bg}`}>
-          <Icon className={`h-5 w-5 ${c.icon}`} />
-        </div>
       </div>
     </div>
   );
@@ -73,7 +70,7 @@ function MetricRow({ label, value, accent }) {
 }
 
 function OrderStatusBar({ pending, completed, cancelled, total }) {
-  if (!total) return <p className="text-xs text-slate-400 text-center py-4">No orders yet</p>;
+  if (!total) return <p className="py-4 text-center text-xs text-slate-400">No orders yet</p>;
 
   const pct = (n) => Math.round((n / total) * 100);
 
@@ -85,7 +82,6 @@ function OrderStatusBar({ pending, completed, cancelled, total }) {
 
   return (
     <div className="space-y-4">
-      {/* Stacked bar */}
       <div className="flex h-3 overflow-hidden rounded-full">
         {bars.map(b => b.pct > 0 && (
           <div key={b.label} title={`${b.label}: ${b.pct}%`}
@@ -93,8 +89,6 @@ function OrderStatusBar({ pending, completed, cancelled, total }) {
             className={`${b.color} transition-all duration-700 first:rounded-l-full last:rounded-r-full`} />
         ))}
       </div>
-
-      {/* Legend */}
       <div className="space-y-2.5">
         {bars.map(({ label, count, pct: p, Icon, text }) => (
           <div key={label} className="flex items-center justify-between">
@@ -113,8 +107,8 @@ function OrderStatusBar({ pending, completed, cancelled, total }) {
   );
 }
 
-// ── Main component ──────────────────────────────────────────────────────────
-export default function Dashboard() {
+// ─── Main Component ────────────────────────────────────────────────────────────
+export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(initialDashboard);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -122,19 +116,34 @@ export default function Dashboard() {
 
   const fetchDashboard = useCallback(async (showLoader = false) => {
     try {
-      if (showLoader) setLoading(true); else setRefreshing(true);
+      if (showLoader) setLoading(true);
+      else setRefreshing(true);
+
       setError("");
-      const data = await getDashboardData();
+
+      const payload = await getDashboardSummary();
+
       setDashboard({
-        counts: data?.counts ?? initialDashboard.counts,
-        salesStats: data?.salesStats ?? initialDashboard.salesStats,
-        orderStats: data?.orderStats ?? initialDashboard.orderStats,
+        counts:
+          payload?.counts ??
+          initialDashboard.counts,
+
+        salesStats:
+          payload?.salesStats ??
+          initialDashboard.salesStats,
+
+        orderStats:
+          payload?.orderStats ??
+          initialDashboard.orderStats,
       });
     } catch (err) {
       console.error(err);
-      setError("Failed to load dashboard");
+      setError("Failed to load dashboard data.");
       toast.error("Failed to load dashboard");
-    } finally { setLoading(false); setRefreshing(false); }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => { fetchDashboard(true); }, [fetchDashboard]);
@@ -160,15 +169,7 @@ export default function Dashboard() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}</span>
-          <button onClick={() => fetchDashboard(false)}
-            className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700">
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <ErrorBanner message={error} />}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -178,10 +179,10 @@ export default function Dashboard() {
         <StatCard title="Orders" value={formatNum(counts.orderCount)} Icon={ClipboardList} accent="pink" />
       </div>
 
-      {/* Detail panels */}
+      {/* Detail panels — 3 columns */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
 
-        {/* Sales */}
+        {/* Sales Overview */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
@@ -197,7 +198,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Order stats with visual bar */}
+        {/* Order Breakdown */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
@@ -217,7 +218,7 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Quick health */}
+        {/* Payment Health — uses new SalesStatsResponse fields */}
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
@@ -226,41 +227,51 @@ export default function Dashboard() {
             <h2 className="text-sm font-bold text-slate-900">Quick Health</h2>
           </div>
           <div className="space-y-2.5">
-            {[
-              {
-                label: "Catalog Coverage",
-                value: `${counts.categoryCount} categories, ${counts.productCount} products`,
-                status: "neutral",
-              },
-              {
-                label: "Pending Orders",
-                value: `${formatNum(orderStats.pendingOrders)} awaiting action`,
-                status: orderStats.pendingOrders > 20 ? "warn" : "good",
-              },
-              {
-                label: "Cancellation Rate",
-                value: orderStats.totalOrders
-                  ? `${Math.round((orderStats.cancelledOrders / orderStats.totalOrders) * 100)}%`
-                  : "—",
-                status: orderStats.totalOrders && (orderStats.cancelledOrders / orderStats.totalOrders) > 0.2 ? "warn" : "good",
-              },
-              {
-                label: "Payment Activity",
-                value: `${formatNum(salesStats.totalPaymentCount)} payments processed`,
-                status: "good",
-              },
-            ].map(({ label, value, status }) => {
-              const cls =
-                status === "good" ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200" :
-                  status === "warn" ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200" :
-                    "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200";
-              return (
-                <div key={label} className={`rounded-xl px-3.5 py-3 ${cls}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
-                  <p className="mt-0.5 text-xs font-bold">{value}</p>
-                </div>
-              );
-            })}
+
+            {/* Payment breakdown using new backend fields */}
+            <div className="rounded-xl bg-emerald-50 px-3.5 py-3 ring-1 ring-inset ring-emerald-200">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 opacity-80">Successful Payments</p>
+              <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {formatNum(salesStats.successPayments)}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-amber-50 px-3.5 py-3 ring-1 ring-inset ring-amber-200">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 opacity-80">Pending Payments</p>
+              <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-amber-700">
+                <Clock className="h-3.5 w-3.5" />
+                {formatNum(salesStats.pendingPayments)}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-rose-50 px-3.5 py-3 ring-1 ring-inset ring-rose-200">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 opacity-80">Failed Payments</p>
+              <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-rose-700">
+                <XCircle className="h-3.5 w-3.5" />
+                {formatNum(salesStats.failedPayments)}
+              </p>
+            </div>
+
+            {/* Cancellation rate alert */}
+            {orderStats.totalOrders > 0 && (orderStats.cancelledOrders / orderStats.totalOrders) > 0.2 && (
+              <div className="rounded-xl bg-rose-50 px-3.5 py-3 ring-1 ring-inset ring-rose-200">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 opacity-80">High Cancellation Rate</p>
+                <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-rose-700">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {Math.round((orderStats.cancelledOrders / orderStats.totalOrders) * 100)}% of orders cancelled
+                </p>
+              </div>
+            )}
+
+            {/* Catalog coverage */}
+            <div className="rounded-xl bg-slate-50 px-3.5 py-3 ring-1 ring-inset ring-slate-200">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 opacity-80">Catalog Coverage</p>
+              <p className="mt-0.5 text-xs font-bold text-slate-700">
+                {counts.categoryCount} categories · {counts.productCount} products
+              </p>
+            </div>
+
           </div>
         </div>
       </div>

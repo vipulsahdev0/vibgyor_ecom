@@ -135,6 +135,7 @@ public class ProductMapper {
                 .primaryImageUrl(extractPrimaryImageUrl(images))
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .stockQuantity(product.getStockQuantity())
+                .status(product.getStatus())
                 .build();
     }
 

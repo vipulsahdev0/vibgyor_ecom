@@ -8,15 +8,58 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 30000,
 });
+
+/* =========================
+   Local Storage Helpers
+========================= */
+
+export const getStoredAuth = () => {
+  try {
+    const token = localStorage.getItem(TOKEN_KEY)?.trim() || null;
+    const user = JSON.parse(
+      localStorage.getItem(USER_KEY) || "null"
+    );
+
+    return { token, user };
+  } catch {
+    return {
+      token: null,
+      user: null,
+    };
+  }
+};
+
+export const clearStoredAuth = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+};
+
+export const saveAuth = (token, user) => {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+
+  if (user) {
+    localStorage.setItem(
+      USER_KEY,
+      JSON.stringify(user)
+    );
+  }
+};
+
+/* =========================
+   Request Interceptor
+========================= */
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const { token } = getStoredAuth();
 
-    if (token?.trim()) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token.trim()}`;
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
@@ -24,40 +67,41 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/* =========================
+   Response Interceptor
+========================= */
+
 api.interceptors.response.use(
   (response) => response,
+
   (error) => {
-    const status = error.response?.status;
-    const requestUrl = error.config?.url ?? "";
-    const responseData = error.response?.data;
+    const status = error?.response?.status;
+    const requestUrl = error?.config?.url || "";
 
     const isAuthRoute =
       requestUrl.includes("/api/auth/login") ||
       requestUrl.includes("/api/auth/register");
 
     if (status === 401 && !isAuthRoute) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      clearStoredAuth();
 
-      if (window.location.pathname !== "/login") {
-        window.location.replace("/login");
+      if (
+        window.location.pathname !== "/login"
+      ) {
+        window.location.href = "/login";
       }
     }
 
-    const normalizedError = {
-      ...error,
-      status,
-      url: requestUrl,
-      message:
-        responseData?.message ||
-        responseData?.error ||
-        error.message ||
-        "Something went wrong",
-      details: responseData?.details || [],
-      data: responseData || null,
-    };
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      "Something went wrong";
 
-    return Promise.reject(normalizedError);
+    return Promise.reject({
+      ...error,
+      message: backendMessage,
+    });
   }
 );
 

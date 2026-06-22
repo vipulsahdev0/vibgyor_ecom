@@ -35,14 +35,18 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final ProductRepo productRepo;
 
+    // ─── Place order from cart (PENDING, no stock deduction yet) ──────────────
+
     @Override
     @Transactional
     public OrderResponse placeOrder(Long userId, PlaceOrderRequest request) {
 
+        // 1. Load user
         User user = userRepo.findById(userId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found with id: " + userId));
 
+        // 2. Load cart with items
         Cart cart = cartRepo.findByUserIdWithItems(userId)
                 .orElseThrow(() ->
                         new RuntimeException("Cart not found for user: " + userId));
@@ -51,42 +55,40 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cannot place order: cart is empty");
         }
 
+        // 3. Load and validate shipping address ownership
         Address shippingAddress = addressRepo.findById(request.getAddressId())
                 .orElseThrow(() ->
-                        new RuntimeException("Address not found with id: "
-                                + request.getAddressId()));
+                        new RuntimeException("Address not found with id: " + request.getAddressId()));
 
-        // Security check
         if (!shippingAddress.getUser().getId().equals(userId)) {
-            throw new RuntimeException(
-                    "Selected address does not belong to the current user");
+            throw new RuntimeException("Selected address does not belong to the current user");
         }
 
-        // Validate stock before creating order
+        // 4. Validate stock for each cart item (but do NOT reduce yet)
         for (CartItem cartItem : cart.getCartItems()) {
-
             Product product = cartItem.getProduct();
 
-            if (product.getStockQuantity() < cartItem.getQuantity()) {
+            if (product.getStockQuantity() == null ||
+                    product.getStockQuantity() < cartItem.getQuantity()) {
+
                 throw new RuntimeException(
-                        "Insufficient stock for product: "
-                                + product.getName()
-                                + ". Available: "
-                                + product.getStockQuantity()
-                                + ", Requested: "
-                                + cartItem.getQuantity()
+                        "Insufficient stock for product " + product.getName()
+                                + ". Available: " + product.getStockQuantity()
+                                + ", Requested: " + cartItem.getQuantity()
                 );
             }
         }
 
+        // 5. Build address snapshot
         String addressSnapshot = buildAddressSnapshot(shippingAddress);
 
+        // 6. Create Order (PENDING, no stock deduction yet)
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .user(user)
                 .shippingAddress(shippingAddress)
                 .shippingAddressSnapshot(addressSnapshot)
-                .orderStatus(OrderStatus.PENDING)
+                .orderStatus(OrderStatus.PENDING_PAYMENT)
                 .paymentStatus(PaymentStatus.PENDING)
                 .totalAmount(BigDecimal.ZERO)
                 .orderItems(new ArrayList<>())
@@ -94,21 +96,20 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepo.save(order);
 
+        // 7. Create OrderItems from CartItems and compute total
         BigDecimal totalAmount = BigDecimal.ZERO;
-
         List<OrderItem> orderItems = new ArrayList<>();
-        List<Product> updatedProducts = new ArrayList<>();
 
         for (CartItem cartItem : cart.getCartItems()) {
-
             Product product = cartItem.getProduct();
 
+            // Prefer cart unitPrice (could capture discounted price at time of order)
             BigDecimal unitPrice = cartItem.getUnitPrice() != null
                     ? cartItem.getUnitPrice()
                     : product.getPrice();
 
-            BigDecimal lineTotal =
-                    unitPrice.multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+            BigDecimal lineTotal = unitPrice.multiply(
+                    BigDecimal.valueOf(cartItem.getQuantity()));
 
             totalAmount = totalAmount.add(lineTotal);
 
@@ -120,62 +121,51 @@ public class OrderServiceImpl implements OrderService {
                     .build();
 
             orderItems.add(orderItem);
-
-            product.setStockQuantity(
-                    product.getStockQuantity() - cartItem.getQuantity()
-            );
-
-            updatedProducts.add(product);
         }
 
-        // Batch operations
-        productRepo.saveAll(updatedProducts);
+        // 8. Persist order items and set total amount
         orderItemRepo.saveAll(orderItems);
-
         savedOrder.setOrderItems(orderItems);
         savedOrder.setTotalAmount(totalAmount);
-
         orderRepo.save(savedOrder);
 
-        cart.getCartItems().clear();
 
-        cartRepo.save(cart);
-
+        // 9. Return order with items
         Order orderWithItems = orderRepo.findByIdWithItems(savedOrder.getId())
                 .orElse(savedOrder);
 
         return orderMapper.toOrderResponse(orderWithItems);
     }
 
+    // ─── Get orders for a user ────────────────────────────────────────────────
+
     @Override
     public List<OrderSummaryResponse> getOrdersByUser(Long userId) {
-        List<Order> orders =
-                orderRepo.findByUserIdOrderByCreatedAtDesc(userId);
-
+        List<Order> orders = orderRepo.findByUserIdOrderByCreatedAtDesc(userId);
         return orderMapper.toOrderSummaryResponseList(orders);
     }
 
+    // ─── Get order by ID ──────────────────────────────────────────────────────
+
     @Override
     public OrderResponse getOrderById(Long orderId) {
-
         Order order = orderRepo.findByIdWithItems(orderId)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Order not found with id: " + orderId));
-
+                        new RuntimeException("Order not found with id: " + orderId));
         return orderMapper.toOrderResponse(order);
     }
+
+    // ─── Get order by order number ────────────────────────────────────────────
 
     @Override
     public OrderResponse getOrderByOrderNumber(String orderNumber) {
-
         Order order = orderRepo.findByOrderNumber(orderNumber)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Order not found with number: " + orderNumber));
-
+                        new RuntimeException("Order not found with number: " + orderNumber));
         return orderMapper.toOrderResponse(order);
     }
+
+    // ─── Admin: get all orders ────────────────────────────────────────────────
 
     @Override
     public List<OrderSummaryResponse> getAllOrders() {
@@ -183,17 +173,15 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toOrderSummaryResponseList(orders);
     }
 
+    // ─── Admin: update order status/payment status ────────────────────────────
+
     @Override
     @Transactional
-    public OrderStatusResponse updateOrderStatus(
-            Long orderId,
-            OrderStatusUpdateRequest request
-    ) {
+    public OrderStatusResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request) {
 
         Order order = orderRepo.findById(orderId)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Order not found with id: " + orderId));
+                        new RuntimeException("Order not found with id: " + orderId));
 
         order.setOrderStatus(request.getOrderStatus());
 
@@ -209,6 +197,8 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
+    // ─── Admin: cancel order and restore stock ────────────────────────────────
+
     @Override
     @Transactional
     public OrderStatusResponse cancelOrder(Long orderId) {
@@ -218,32 +208,25 @@ public class OrderServiceImpl implements OrderService {
                         new RuntimeException(
                                 "Order not found with id: " + orderId));
 
-        if (
-                order.getOrderStatus() == OrderStatus.SHIPPED ||
-                        order.getOrderStatus() == OrderStatus.DELIVERED
-        )
-        {
+        if (order.getOrderStatus() == OrderStatus.SHIPPED ||
+                order.getOrderStatus() == OrderStatus.DELIVERED) {
             throw new RuntimeException(
                     "Shipped or delivered orders cannot be cancelled"
             );
         }
 
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-            throw new RuntimeException(
-                    "Order is already cancelled");
+            throw new RuntimeException("Order is already cancelled");
         }
 
         List<Product> productsToRestore = new ArrayList<>();
 
         // Restore stock
         for (OrderItem item : order.getOrderItems()) {
-
             Product product = item.getProduct();
-
             product.setStockQuantity(
                     product.getStockQuantity() + item.getQuantity()
             );
-
             productsToRestore.add(product);
         }
 
@@ -258,6 +241,8 @@ public class OrderServiceImpl implements OrderService {
                 "Order cancelled successfully"
         );
     }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private String generateOrderNumber() {
 
@@ -277,13 +262,13 @@ public class OrderServiceImpl implements OrderService {
     private String buildAddressSnapshot(Address address) {
 
         return String.format(
-                "{\"fullName\":\"%s\",\"mobile\":\"%s\","
-                        + "\"addressLine1\":\"%s\","
-                        + "\"addressLine2\":\"%s\","
-                        + "\"city\":\"%s\","
-                        + "\"state\":\"%s\","
-                        + "\"country\":\"%s\","
-                        + "\"zipCode\":\"%s\"}",
+                "{\\\"fullName\\\":\\\"%s\\\",\\\"mobile\\\":\\\"%s\\\","
+                        + "\\\"addressLine1\\\":\\\"%s\\\","
+                        + "\\\"addressLine2\\\":\\\"%s\\\","
+                        + "\\\"city\\\":\\\"%s\\\","
+                        + "\\\"state\\\":\\\"%s\\\","
+                        + "\\\"country\\\":\\\"%s\\\","
+                        + "\\\"zipCode\\\":\\\"%s\\\"}",
 
                 address.getFullName(),
                 address.getMobile(),

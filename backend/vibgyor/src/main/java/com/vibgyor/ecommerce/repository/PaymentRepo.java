@@ -2,7 +2,6 @@ package com.vibgyor.ecommerce.repository;
 
 import com.vibgyor.ecommerce.entity.Order;
 import com.vibgyor.ecommerce.entity.Payment;
-import com.vibgyor.ecommerce.entity.enums.PaymentMethod;
 import com.vibgyor.ecommerce.entity.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -18,7 +17,7 @@ public interface PaymentRepo extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByTransactionId(String transactionId);
 
-    List<Payment> findByPaymentMethod(PaymentMethod paymentMethod);
+    Optional<Payment> findByPaymentReference(String paymentReference);
 
     List<Payment> findByPaymentStatusAndPaymentDateBetween(
             PaymentStatus paymentStatus,

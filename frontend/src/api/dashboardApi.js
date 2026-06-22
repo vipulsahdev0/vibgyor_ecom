@@ -1,11 +1,26 @@
 import api from "./axios";
 
-const ADMIN_DASHBOARD_BASE = "/api/admin/dashboard";
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
 
-export const getDashboardData = async () => {
-  const response = await api.get(
-    ADMIN_DASHBOARD_BASE
-  );
+const DASHBOARD_BASE = "/api/admin/dashboard";
 
-  return response.data;
+export const getDashboardSummary = async () => {
+  const response = await api.get(DASHBOARD_BASE);
+  return unwrap(response);
+};
+
+export const getAdminCounts = async () => {
+  const response = await api.get(`${DASHBOARD_BASE}/counts`);
+  return unwrap(response);
+};
+
+export const getSalesStats = async () => {
+  const response = await api.get(`${DASHBOARD_BASE}/sales`);
+  return unwrap(response);
+};
+
+export const getOrderStats = async () => {
+  const response = await api.get(`${DASHBOARD_BASE}/orders`);
+  return unwrap(response);
 };

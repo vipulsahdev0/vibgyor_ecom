@@ -1,5 +1,6 @@
 package com.vibgyor.ecommerce.controller;
 
+import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.address.AddressRequest;
 import com.vibgyor.ecommerce.dto.request.address.AddressUpdateRequest;
 import com.vibgyor.ecommerce.dto.request.address.DefaultAddressRequest;
@@ -24,60 +25,61 @@ public class AddressController {
     private final AddressService addressService;
 
     @PostMapping
-    public ResponseEntity<AddressResponse> createAddress(
+    public ResponseEntity<ApiResponse<AddressResponse>> createAddress(
             @PathVariable Long userId,
-            @Valid @RequestBody AddressRequest request
-    ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(addressService.createAddress(userId, request));
+            @Valid @RequestBody AddressRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Address created successfully",
+                        addressService.createAddress(userId, request)));
     }
 
     @PutMapping("/{addressId}")
-    public ResponseEntity<AddressResponse> updateAddress(
+    public ResponseEntity<ApiResponse<AddressResponse>> updateAddress(
             @PathVariable Long userId,
             @PathVariable Long addressId,
-            @Valid @RequestBody AddressUpdateRequest request
-    ) {
-        return ResponseEntity.ok(addressService.updateAddress(userId, addressId, request));
+            @Valid @RequestBody AddressUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Address updated successfully",
+                addressService.updateAddress(userId, addressId, request)));
     }
 
     @DeleteMapping("/{addressId}")
-    public ResponseEntity<Void> deleteAddress(
+    public ResponseEntity<ApiResponse<Void>> deleteAddress(
             @PathVariable Long userId,
-            @PathVariable Long addressId
-    ) {
+            @PathVariable Long addressId) {
         addressService.deleteAddress(userId, addressId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok("Address deleted successfully", null));
     }
 
     @GetMapping("/{addressId}")
-    public ResponseEntity<AddressResponse> getAddressById(
+    public ResponseEntity<ApiResponse<AddressResponse>> getAddressById(
             @PathVariable Long userId,
-            @PathVariable Long addressId
-    ) {
-        return ResponseEntity.ok(addressService.getAddressById(userId, addressId));
+            @PathVariable Long addressId) {
+        return ResponseEntity.ok(ApiResponse.ok("Address fetched successfully",
+                addressService.getAddressById(userId, addressId)));
     }
 
     @GetMapping
-    public ResponseEntity<List<AddressSummaryResponse>> getUserAddresses(
+    public ResponseEntity<ApiResponse<List<AddressSummaryResponse>>> getUserAddresses(
             @PathVariable Long userId,
-            @RequestParam(required = false) AddressType addressType
-    ) {
-        if (addressType != null) {
-            return ResponseEntity.ok(addressService.getUserAddressesByType(userId, addressType));
-        }
-        return ResponseEntity.ok(addressService.getUserAddresses(userId));
+            @RequestParam(required = false) AddressType addressType) {
+        List<AddressSummaryResponse> addresses = (addressType != null)
+                ? addressService.getUserAddressesByType(userId, addressType)
+                : addressService.getUserAddresses(userId);
+        return ResponseEntity.ok(ApiResponse.ok("Addresses fetched successfully", addresses));
     }
 
     @GetMapping("/default")
-    public ResponseEntity<AddressResponse> getDefaultAddress(@PathVariable Long userId) {
-        return ResponseEntity.ok(addressService.getDefaultAddress(userId));
+    public ResponseEntity<ApiResponse<AddressResponse>> getDefaultAddress(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("Default address fetched successfully",
+                addressService.getDefaultAddress(userId)));
     }
 
     @PatchMapping("/default")
-    public ResponseEntity<DefaultAddressResponse> setDefaultAddress(
+    public ResponseEntity<ApiResponse<DefaultAddressResponse>> setDefaultAddress(
             @PathVariable Long userId,
-            @Valid @RequestBody DefaultAddressRequest request
-    ) {
-        return ResponseEntity.ok(addressService.setDefaultAddress(userId, request));
+            @Valid @RequestBody DefaultAddressRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Default address updated successfully",
+                addressService.setDefaultAddress(userId, request)));
     }
 }

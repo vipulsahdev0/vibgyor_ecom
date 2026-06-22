@@ -1,13 +1,13 @@
-import { Loader2, ArrowRight, ShoppingBag, Tag, Truck } from "lucide-react";
+import { Loader2, ArrowRight, ShoppingBag, Tag, Truck, Clock } from "lucide-react";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(amount ?? 0));
 
 export default function OrderSummary({ cart, onCheckout, loading, disabled = false }) {
-  const items    = cart?.items    ?? [];
-  const subtotal = Number(cart?.subtotal   ?? 0);
+  const items = cart?.items ?? [];
+  const subtotal = Number(cart?.subtotal ?? 0);
   const discount = Number(cart?.discountTotal ?? 0);
-  const total    = Number(cart?.grandTotal  ?? 0);
+  const total = Number(cart?.grandTotal ?? 0);
   const hasDiscount = discount > 0;
 
   return (
@@ -23,7 +23,7 @@ export default function OrderSummary({ cart, onCheckout, loading, disabled = fal
       <div className="max-h-52 overflow-y-auto divide-y divide-slate-50 px-5">
         {items.map((item) => (
           <div key={item.cartItemId ?? item.productId}
-               className="flex items-center gap-3 py-3">
+            className="flex items-center gap-3 py-3">
             {item.productImageUrl && (
               <img
                 src={item.productImageUrl}
@@ -63,6 +63,13 @@ export default function OrderSummary({ cart, onCheckout, loading, disabled = fal
           <span className="font-semibold text-emerald-600">Free</span>
         </div>
 
+        <div className="flex items-center justify-between text-sm">
+          <span className="flex items-center gap-1 text-slate-500">
+            <Clock className="h-3.5 w-3.5" /> Estimated Delivery
+          </span>
+          <span >Tomorrow - 3 Days </span>
+        </div>
+
         <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
           <span className="font-bold text-slate-900">Total</span>
           <span className="text-lg font-black text-indigo-600 tabular-nums">{formatCurrency(total)}</span>
@@ -77,6 +84,7 @@ export default function OrderSummary({ cart, onCheckout, loading, disabled = fal
 
       {/* CTA */}
       <div className="border-t border-slate-100 px-5 py-4">
+        <p className="flex item-center justify-center gap-2 mb-3 text-xs text-dark-400">Secure Checkout & 100% Safe Payments</p>
         <button
           type="button"
           onClick={onCheckout}

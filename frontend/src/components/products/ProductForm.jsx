@@ -6,18 +6,18 @@ const LABEL = "mb-1.5 block text-xs font-semibold uppercase tracking-wider text-
 
 export default function ProductForm({ categories = [], onSubmit, loading = false }) {
   const [formData, setFormData] = useState({
-    name:          "",
-    description:   "",
-    price:         "",
+    name: "",
+    description: "",
+    price: "",
     discountedPrice: "",
     stockQuantity: "",
-    sku:           "",
-    categoryId:    "",
-    status:        "ACTIVE",
-    images:        [],
+    sku: "",
+    categoryId: "",
+    status: "ACTIVE",
+    images: [],
   });
-  const [imageUrl,  setImageUrl]  = useState("");
-  const [imgError,  setImgError]  = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imgError, setImgError] = useState("");
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -55,15 +55,26 @@ export default function ProductForm({ categories = [], onSubmit, loading = false
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (
+      formData.discountedPrice &&
+      Number(formData.discountedPrice) > Number(formData.price)
+    ) {
+      alert("Discounted price cannot be greater than price");
+      return;
+    }
+
     onSubmit({
       ...formData,
-      name:           formData.name.trim(),
-      description:    formData.description.trim(),
-      sku:            formData.sku.trim() || undefined,
-      price:          Number(formData.price),
-      discountedPrice: formData.discountedPrice ? Number(formData.discountedPrice) : undefined,
-      stockQuantity:  Number(formData.stockQuantity),
-      categoryId:     Number(formData.categoryId),
+      name: formData.name.trim(),
+      description: formData.description.trim(),
+      sku: formData.sku.trim() || undefined,
+      price: Number(formData.price),
+      discountedPrice: formData.discountedPrice
+        ? Number(formData.discountedPrice)
+        : undefined,
+      stockQuantity: Number(formData.stockQuantity),
+      categoryId: Number(formData.categoryId),
     });
   };
 
@@ -155,9 +166,8 @@ export default function ProductForm({ categories = [], onSubmit, loading = false
         {formData.images.length > 0 && (
           <div className="mt-3 space-y-2">
             {formData.images.map((img, idx) => (
-              <div key={idx} className={`flex items-center gap-3 rounded-xl border p-2.5 transition ${
-                img.isPrimary ? "border-indigo-300 bg-indigo-50" : "border-slate-100 bg-slate-50"
-              }`}>
+              <div key={idx} className={`flex items-center gap-3 rounded-xl border p-2.5 transition ${img.isPrimary ? "border-indigo-300 bg-indigo-50" : "border-slate-100 bg-slate-50"
+                }`}>
                 <img src={img.imageUrl} alt="Preview"
                   className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
                 <div className="min-w-0 flex-1">
@@ -192,6 +202,7 @@ export default function ProductForm({ categories = [], onSubmit, loading = false
           </div>
         )}
       </div>
+
 
       <button type="submit" disabled={loading}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-60">

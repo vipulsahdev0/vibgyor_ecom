@@ -1,114 +1,62 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
-  ClipboardList, RefreshCw, AlertCircle, Search,
+  ClipboardList, RefreshCw, Search,
   Clock, CheckCircle2, XCircle, Loader2, Filter,
-  ChevronDown, ChevronUp, Package, IndianRupee,
+  ChevronDown, ChevronUp, Package, IndianRupee, CreditCard,
 } from "lucide-react";
-import {
-  getAllOrders,
-  updateOrderStatus,
-} from "../../api/orderApi";
-// ── helpers ──────────────────────────────────────────────────────────────────
+import { getAllOrders, updateOrderStatus } from "../../api/orderApi";
+import { updateAdminOrderStatus, updateAdminPaymentStatus } from "../../api/adminApi";
+import StatCard from "../../components/shared/StatCard";
+import TableSkeleton from "../../components/shared/TableSkeleton";
+import ErrorBanner from "../../components/shared/ErrorBanner";
+import SearchBar from "../../components/shared/SearchBar";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatCurrency = (v) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(v || 0));
 
-const formatDate = (v) => v
-  ? new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-  : "—";
+const formatDate = (v) =>
+  v ? new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
+// ─── Status maps ──────────────────────────────────────────────────────────────
 const ORDER_STATUS_STYLES = {
-  PENDING:
-    "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
-
-  CONFIRMED:
-    "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200",
-
-  PROCESSING:
-    "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200",
-
-  PACKED:
-    "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200",
-
-  SHIPPED:
-    "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
-
-  DELIVERED:
-    "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
-
-  CANCELLED:
-    "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
+  PENDING_PAYMENT: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+  CONFIRMED: "bg-blue-50  text-blue-700  ring-1 ring-inset ring-blue-200",
+  PROCESSING: "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200",
+  PACKED: "bg-cyan-50  text-cyan-700  ring-1 ring-inset ring-cyan-200",
+  SHIPPED: "bg-sky-50   text-sky-700   ring-1 ring-inset ring-sky-200",
+  DELIVERED: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  CANCELLED: "bg-rose-50  text-rose-700  ring-1 ring-inset ring-rose-200",
+  REFUNDED: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
 };
 
 const PAYMENT_STATUS_STYLES = {
-  PAID: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   SUCCESS: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  PAID: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   FAILED: "bg-rose-50    text-rose-700    ring-1 ring-inset ring-rose-200",
   PENDING: "bg-amber-50   text-amber-700   ring-1 ring-inset ring-amber-200",
+  REFUNDED: "bg-slate-100  text-slate-600   ring-1 ring-inset ring-slate-200",
 };
 
-const ORDER_STATUS_ICON = {
-  PENDING: <Clock className="h-3.5 w-3.5" />,
-  CONFIRMED: <CheckCircle2 className="h-3.5 w-3.5" />,
-  PROCESSING: <Clock className="h-3.5 w-3.5" />,
-  PACKED: <Package className="h-3.5 w-3.5" />,
-  SHIPPED: <Package className="h-3.5 w-3.5" />,
-  DELIVERED: <CheckCircle2 className="h-3.5 w-3.5" />,
-  CANCELLED: <XCircle className="h-3.5 w-3.5" />,
-};
+// All OrderStatus enum values from backend
+const ALL_ORDER_STATUSES = [
+  "PENDING_PAYMENT", "CONFIRMED", "PROCESSING", "PACKED",
+  "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED",
+];
 
-const STATUS_FILTERS = ["ALL", "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
+// All PaymentStatus enum values from backend
+const ALL_PAYMENT_STATUSES = ["PENDING", "SUCCESS", "FAILED", "REFUNDED"];
 
-// ── sub-components ────────────────────────────────────────────────────────────
-function TableSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="divide-y divide-slate-100">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-32 rounded bg-slate-100" />
-              <div className="h-3 w-20 rounded bg-slate-100" />
-            </div>
-            <div className="h-5 w-16 rounded-full bg-slate-100" />
-            <div className="h-5 w-16 rounded-full bg-slate-100" />
-            <div className="h-5 w-16 rounded-full bg-slate-100" />
-            <div className="h-5 w-20 rounded bg-slate-100" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const STATUS_FILTERS = ["ALL", "PENDING_PAYMENT", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
-function StatCard({ title, value, accent, Icon }) {
-  const map = {
-    slate: { bg: "bg-slate-50", icon: "text-slate-500", val: "text-slate-900" },
-    amber: { bg: "bg-amber-50", icon: "text-amber-500", val: "text-amber-700" },
-    emerald: { bg: "bg-emerald-50", icon: "text-emerald-500", val: "text-emerald-700" },
-    rose: { bg: "bg-rose-50", icon: "text-rose-500", val: "text-rose-700" },
-  };
-  const c = map[accent] ?? map.slate;
-  return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</p>
-          <p className={`mt-2 text-2xl font-black tabular-nums ${c.val}`}>{value}</p>
-        </div>
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.bg}`}>
-          <Icon className={`h-4.5 w-4.5 ${c.icon}`} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Expandable row for order items on mobile
-function MobileOrderCard({ order }) {
+// ─── Mobile card sub-component ────────────────────────────────────────────────
+function MobileOrderCard({ order, onStatusChange, onPaymentStatusChange, updatingId }) {
   const [expanded, setExpanded] = useState(false);
+  const isUpdating = updatingId === order.id;
+
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+    <article className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -120,32 +68,54 @@ function MobileOrderCard({ order }) {
 
         <div className="mt-3 flex flex-wrap gap-2">
           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ORDER_STATUS_STYLES[order.orderStatus] ?? "bg-slate-100 text-slate-600"}`}>
-            {ORDER_STATUS_ICON[order.orderStatus]}{order.orderStatus}
+            {order.orderStatus}
           </span>
           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${PAYMENT_STATUS_STYLES[order.paymentStatus] ?? "bg-slate-100 text-slate-600"}`}>
             {order.paymentStatus}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
-            <Package className="h-3 w-3" />{order.itemCount ?? 0} items
+            <Package className="h-3 w-3" />{order.itemCount ?? order.orderItems?.length ?? 0} items
           </span>
         </div>
 
-        {order.items?.length > 0 && (
+        {/* Status update dropdowns */}
+        <div className="mt-3 flex gap-2">
+          <select
+            disabled={isUpdating}
+            value={order.orderStatus}
+            onChange={(e) => onStatusChange(order.id, e.target.value)}
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50"
+          >
+            {ALL_ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            disabled={isUpdating}
+            value={order.paymentStatus}
+            onChange={(e) => onPaymentStatusChange(order.id, e.target.value)}
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50"
+          >
+            {ALL_PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {isUpdating && <Loader2 className="h-4 w-4 animate-spin self-center text-indigo-500" />}
+        </div>
+
+        {/* Items toggle */}
+        {order.orderItems?.length > 0 && (
           <button onClick={() => setExpanded(e => !e)}
             className="mt-3 flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100">
-            <span>Order items</span>
+            <span>Order items ({order.orderItems.length})</span>
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
         )}
       </div>
 
-      {expanded && order.items?.length > 0 && (
+      {expanded && order.orderItems?.length > 0 && (
         <div className="divide-y divide-slate-50 border-t border-slate-100 bg-slate-50/50">
-          {order.items.map((item, i) => (
+          {order.orderItems.map((item, i) => (
             <div key={i} className="flex items-center justify-between px-4 py-2.5">
               <div>
                 <p className="text-xs font-semibold text-slate-800">{item.productName}</p>
-                <p className="text-[11px] text-slate-400">Qty {item.quantity}</p>
+                <p className="text-[11px] text-slate-400">Qty {item.quantity} × {formatCurrency(item.unitPrice)}</p>
               </div>
               <p className="text-xs font-bold text-slate-700 tabular-nums">{formatCurrency(item.lineTotal)}</p>
             </div>
@@ -156,8 +126,8 @@ function MobileOrderCard({ order }) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
-export default function Orders() {
+// ─── Main Component ────────────────────────────────────────────────────────────
+export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -165,39 +135,32 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [expandedRow, setExpandedRow] = useState(null);
-  const [editingOrder, setEditingOrder] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
 
+  // ── Fetch all orders — GET /api/admin/orders ────────────────────────────
   const fetchOrders = useCallback(async (showLoader = false) => {
     try {
       if (showLoader) setLoading(true); else setRefreshing(true);
       setError("");
-      const data = await getAllOrders();
+      const res = await getAllOrders();
+      // getAllOrders hits /api/admin/orders → ApiResponse<List<OrderResponse>>
+      const data = res?.data ?? res;
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      setError("Failed to load orders");
+      setError("Failed to load orders.");
       toast.error("Failed to load orders");
     } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => { fetchOrders(true); }, [fetchOrders]);
 
+  // ── Derived stats ────────────────────────────────────────────────────────
   const orderStats = useMemo(() => ({
     total: orders.length,
-
-    pending: orders.filter(
-      o => ["PENDING", "CONFIRMED", "PROCESSING", "PACKED", "SHIPPED"]
-        .includes(o.orderStatus)
-    ).length,
-
-    completed: orders.filter(
-      o => o.orderStatus === "DELIVERED"
-    ).length,
-
-    cancelled: orders.filter(
-      o => o.orderStatus === "CANCELLED"
-    ).length,
-
+    pending: orders.filter(o => ["PENDING_PAYMENT", "CONFIRMED", "PROCESSING", "PACKED", "SHIPPED"].includes(o.orderStatus)).length,
+    completed: orders.filter(o => o.orderStatus === "DELIVERED").length,
+    cancelled: orders.filter(o => o.orderStatus === "CANCELLED").length,
   }), [orders]);
 
   const filteredOrders = useMemo(() => orders.filter(o => {
@@ -212,32 +175,36 @@ export default function Orders() {
 
   const toggleRow = (id) => setExpandedRow(prev => prev === id ? null : id);
 
-  const handleStatusChange = async (orderId, status) => {
+  // ── Update order status — PATCH /api/admin/orders/{orderId}/status ───────
+  const handleStatusChange = async (orderId, newStatus) => {
+    setUpdatingId(orderId);
     try {
-
-      await updateOrderStatus(orderId, {
-        orderStatus: status,
+      await updateAdminOrderStatus(orderId, {
+        orderStatus: newStatus,
+        note: "",
       });
-
-      setOrders(prev =>
-        prev.map(order =>
-          order.id === orderId
-            ? { ...order, orderStatus: status }
-            : order
-        )
-      );
-
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, orderStatus: newStatus } : o));
       toast.success("Order status updated");
-
     } catch (err) {
-
       console.error(err);
+      toast.error(err?.message || "Failed to update order status");
+    } finally { setUpdatingId(null); }
+  };
 
-      toast.error(
-        err?.response?.data?.message ||
-        "Failed to update order status"
-      );
-    }
+  // ── Update payment status — PATCH /api/admin/orders/{orderId}/payment-status
+  const handlePaymentStatusChange = async (orderId, newPaymentStatus) => {
+    setUpdatingId(orderId);
+    try {
+      await updateAdminPaymentStatus(orderId, {
+        paymentStatus: newPaymentStatus,
+        reason: "",
+      });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus: newPaymentStatus } : o));
+      toast.success("Payment status updated");
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || "Failed to update payment status");
+    } finally { setUpdatingId(null); }
   };
 
   if (loading) return (
@@ -270,28 +237,24 @@ export default function Orders() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Total Orders" value={orderStats.total} accent="slate" Icon={ClipboardList} />
         <StatCard title="Pending" value={orderStats.pending} accent="amber" Icon={Clock} />
-        <StatCard title="Completed" value={orderStats.completed} accent="emerald" Icon={CheckCircle2} />
+        <StatCard title="Delivered" value={orderStats.completed} accent="emerald" Icon={CheckCircle2} />
         <StatCard title="Cancelled" value={orderStats.cancelled} accent="rose" Icon={XCircle} />
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}</span>
-          <button onClick={() => fetchOrders(false)}
-            className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700">
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <ErrorBanner message={error} />}
 
       {/* Search + filter */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Search by order number or ID…" value={search}
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="search"
+            placeholder="Search by order number or ID…"
+            value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto">
           <Filter className="h-4 w-4 shrink-0 text-slate-400" />
@@ -300,10 +263,16 @@ export default function Orders() {
               className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition ${statusFilter === f
                 ? "bg-slate-900 text-white"
                 : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}>{f}</button>
+                }`}>{f.replace("_", " ")}</button>
           ))}
         </div>
       </div>
+
+      {/* Results meta */}
+      <p className="text-xs text-slate-500">
+        Showing <span className="font-bold text-slate-900">{filteredOrders.length}</span> of{" "}
+        <span className="font-bold text-slate-900">{orders.length}</span> orders
+      </p>
 
       {/* Empty */}
       {!filteredOrders.length && (
@@ -328,107 +297,92 @@ export default function Orders() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  {["Order", "Items", "Total", "Order Status", "Payment", "Date"].map((h, i) => (
+                  {["Order", "Date", "Amount", "Order Status", "Payment Status", "Items", "Actions"].map((h, i) => (
                     <th key={h}
-                      className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">
+                      className={`px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 ${i === 6 ? "text-right" : "text-left"}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filteredOrders.map(order => (
-                  <Fragment key={order.id}>
-                    <tr key={order.id}
-                      className={`group transition-colors hover:bg-slate-50/70 ${expandedRow === order.id ? "bg-indigo-50/30" : ""}`}>
-                      <td className="px-5 py-4">
-                        <button onClick={() => order.items?.length && toggleRow(order.id)}
-                          className="flex items-center gap-1.5 text-left">
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">{order.orderNumber || `#${order.id}`}</p>
-                            <p className="text-[11px] text-slate-400">ID {order.id}</p>
-                          </div>
-                          {order.items?.length > 0 && (
-                            expandedRow === order.id
-                              ? <ChevronUp className="h-3.5 w-3.5 text-indigo-500" />
-                              : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
-                          <Package className="h-3 w-3" />{order.itemCount ?? 0}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-sm font-black text-slate-900 tabular-nums">
-                        {formatCurrency(order.totalAmount)}
-                      </td>
-                      <td className="px-5 py-4">
-                        {editingOrder === order.id ? (
+                {filteredOrders.map(order => {
+                  const isUpdating = updatingId === order.id;
+                  const isExpanded = expandedRow === order.id;
+                  return (
+                    <Fragment key={order.id}>
+                      <tr className="group transition-colors hover:bg-slate-50/70">
+                        <td className="px-4 py-4">
+                          <p className="text-sm font-bold text-slate-900">{order.orderNumber || `#${order.id}`}</p>
+                          <p className="text-[11px] text-slate-400">ID #{order.id}</p>
+                        </td>
+                        <td className="px-4 py-4 text-xs text-slate-500">{formatDate(order.createdAt)}</td>
+                        <td className="px-4 py-4 text-sm font-bold text-slate-900 tabular-nums">
+                          {formatCurrency(order.totalAmount)}
+                        </td>
+                        {/* Order status dropdown */}
+                        <td className="px-4 py-4">
                           <select
+                            disabled={isUpdating}
                             value={order.orderStatus}
-                            onChange={(e) => {
-                              handleStatusChange(order.id, e.target.value);
-                              setEditingOrder(null);
-                            }}
-                            autoFocus
-                            className="rounded-lg border px-2 py-1 text-sm"
+                            onChange={e => handleStatusChange(order.id, e.target.value)}
+                            className={`rounded-xl border px-2.5 py-1 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50 ${ORDER_STATUS_STYLES[order.orderStatus] ?? "border-slate-200 bg-slate-50 text-slate-600"}`}
                           >
-                            <option value="PENDING">Pending</option>
-                            <option value="CONFIRMED">Confirmed</option>
-                            <option value="PROCESSING">Processing</option>
-                            <option value="PACKED">Packed</option>
-                            <option value="SHIPPED">Shipped</option>
-                            <option value="DELIVERED">Delivered</option>
-                            <option value="CANCELLED">Cancelled</option>
+                            {ALL_ORDER_STATUSES.map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
                           </select>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              if (
-                                order.orderStatus !== "DELIVERED" &&
-                                order.orderStatus !== "CANCELLED"
-                              ) {
-                                setEditingOrder(order.id);
-                              }
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ORDER_STATUS_STYLES[order.orderStatus] ??
-                              "bg-slate-100 text-slate-600"
-                              }`}
+                        </td>
+                        {/* Payment status dropdown */}
+                        <td className="px-4 py-4">
+                          <select
+                            disabled={isUpdating}
+                            value={order.paymentStatus}
+                            onChange={e => handlePaymentStatusChange(order.id, e.target.value)}
+                            className={`rounded-xl border px-2.5 py-1 text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50 ${PAYMENT_STATUS_STYLES[order.paymentStatus] ?? "border-slate-200 bg-slate-50 text-slate-600"}`}
                           >
-                            {ORDER_STATUS_ICON[order.orderStatus]}
-                            {order.orderStatus}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${PAYMENT_STATUS_STYLES[order.paymentStatus] ?? "bg-slate-100 text-slate-600"}`}>
-                          {order.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-xs text-slate-500 tabular-nums">{formatDate(order.createdAt)}</td>
-                    </tr>
-
-                    {/* Expandable items row */}
-                    {expandedRow === order.id && order.items?.length > 0 && (
-                      <tr key={`${order.id}-items`}>
-                        <td colSpan={6} className="bg-indigo-50/20 px-5 py-3">
-                          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                            {order.items.map((item, i) => (
-                              <div key={i} className="flex items-center justify-between rounded-xl border border-indigo-100 bg-white px-3.5 py-2.5">
-                                <div>
-                                  <p className="text-xs font-semibold text-slate-800">{item.productName}</p>
-                                  <p className="text-[11px] text-slate-400">Qty {item.quantity} × {formatCurrency(item.unitPrice)}</p>
-                                </div>
-                                <p className="text-xs font-bold text-indigo-700 tabular-nums">{formatCurrency(item.lineTotal)}</p>
-                              </div>
-                            ))}
+                            {ALL_PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
+                            <Package className="h-3 w-3" />
+                            {order.itemCount ?? order.orderItems?.length ?? 0}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {isUpdating && <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />}
+                            {order.orderItems?.length > 0 && (
+                              <button onClick={() => toggleRow(order.id)}
+                                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95">
+                                {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                Items
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    )}
-                  </Fragment>
-                ))}
+
+                      {/* Expandable items row */}
+                      {isExpanded && order.orderItems?.length > 0 && (
+                        <tr className="bg-slate-50/80">
+                          <td colSpan={7} className="px-6 py-3">
+                            <div className="space-y-1.5">
+                              {order.orderItems.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-2.5">
+                                  <div>
+                                    <p className="text-xs font-semibold text-slate-800">{item.productName}</p>
+                                    <p className="text-[11px] text-slate-400">Qty {item.quantity} × {formatCurrency(item.unitPrice)}</p>
+                                  </div>
+                                  <p className="text-xs font-bold text-slate-700 tabular-nums">{formatCurrency(item.lineTotal)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -436,7 +390,13 @@ export default function Orders() {
           {/* Mobile cards */}
           <div className="space-y-3 lg:hidden">
             {filteredOrders.map(order => (
-              <MobileOrderCard key={order.id} order={order} />
+              <MobileOrderCard
+                key={order.id}
+                order={order}
+                onStatusChange={handleStatusChange}
+                onPaymentStatusChange={handlePaymentStatusChange}
+                updatingId={updatingId}
+              />
             ))}
           </div>
         </>

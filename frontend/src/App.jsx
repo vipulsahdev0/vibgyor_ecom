@@ -1,33 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-
-import MainLayout from "./layouts/MainLayout";
-import AuthLayout from "./layouts/AuthLayout";
-import AdminLayout from "./layouts/AdminLayout";
-import UserLayout from "./layouts/UserLayout";
-
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
-import Home from "./pages/public/Home";
-import Products from "./pages/public/Products";
-import Categories from "./pages/public/Categories";
-import Login from "./pages/public/Login";
-import Register from "./pages/public/Register";
+import { AuthLayout, AdminLayout, UserLayout, MainLayout } from "./layouts";
 
-import Dashboard from "./pages/admin/Dashboard";
-import AdminCategories from "./pages/admin/Categories";
-import AdminProducts from "./pages/admin/Products";
-import Orders from "./pages/admin/Orders";
-import Users from "./pages/admin/Users";
-import OrderDetails from "./pages/user/OrderDetails";
-
-import Profile from "./pages/user/Profile";
-import Cart from "./pages/user/Cart";
-import Wishlist from "./pages/user/Wishlist";
-import Checkout from "./pages/user/Checkout";
-import PaymentSuccess from "./pages/user/PaymentSuccess";
-import UserOrders from "./pages/user/Orders";
-import NotFound from "./pages/public/NotFound";
+import { Dashboard, AdminCategories, AdminProducts, Orders, Users } from "./pages/admin";
+import { Home, Login, Register, NotFound, Categories, Products } from "./pages/public";
+import { Cart, Checkout, OrderDetails, UserOrders, PaymentSuccess, Profile, Wishlist } from "./pages/user";
 
 export default function App() {
   return (

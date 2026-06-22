@@ -1,10 +1,7 @@
 package com.vibgyor.ecommerce.dto.response.payment;
 
 import com.vibgyor.ecommerce.entity.enums.PaymentStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @NoArgsConstructor

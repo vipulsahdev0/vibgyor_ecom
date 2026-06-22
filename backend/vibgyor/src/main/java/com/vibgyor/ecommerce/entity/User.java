@@ -1,5 +1,6 @@
 package com.vibgyor.ecommerce.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.entity.enums.UserRole;
 import jakarta.persistence.*;
@@ -58,7 +59,8 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Address> addresses = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Order> orders = new ArrayList<>();
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

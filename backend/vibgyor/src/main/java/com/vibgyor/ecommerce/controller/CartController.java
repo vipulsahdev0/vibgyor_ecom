@@ -1,5 +1,6 @@
 package com.vibgyor.ecommerce.controller;
 
+import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.cart.AddToCartRequest;
 import com.vibgyor.ecommerce.dto.request.cart.UpdateCartItemRequest;
 import com.vibgyor.ecommerce.dto.response.cart.CartResponse;
@@ -18,42 +19,46 @@ public class CartController {
     private final CartService cartService;
 
     @GetMapping
-    public ResponseEntity<CartResponse> getCartByUserId(@PathVariable Long userId) {
-        return ResponseEntity.ok(cartService.getCartByUserId(userId));
+    public ResponseEntity<ApiResponse<CartResponse>> getCartByUserId(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("Cart fetched successfully",
+                cartService.getCartByUserId(userId)));
     }
 
     @PostMapping("/items")
-    public ResponseEntity<CartResponse> addToCart(
+    public ResponseEntity<ApiResponse<CartResponse>> addToCart(
             @PathVariable Long userId,
-            @Valid @RequestBody AddToCartRequest request
-    ) {
-        return ResponseEntity.ok(cartService.addToCart(userId, request));
+            @Valid @RequestBody AddToCartRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Item added to cart",
+                cartService.addToCart(userId, request)));
     }
 
     @PutMapping("/items")
-    public ResponseEntity<CartResponse> updateCartItem(
+    public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateCartItemRequest request
-    ) {
-        return ResponseEntity.ok(cartService.updateCartItem(userId, request));
+            @Valid @RequestBody UpdateCartItemRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Cart item updated",
+                cartService.updateCartItem(userId, request)));
     }
 
     @DeleteMapping("/items/{productId}")
-    public ResponseEntity<CartResponse> removeFromCart(
+    public ResponseEntity<ApiResponse<CartResponse>> removeFromCart(
             @PathVariable Long userId,
-            @PathVariable Long productId
-    ) {
-        return ResponseEntity.ok(cartService.removeFromCart(userId, productId));
+            @PathVariable Long productId) {
+        return ResponseEntity.ok(ApiResponse.ok("Item removed from cart",
+                cartService.removeFromCart(userId, productId)));
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<CartSummaryResponse> getCartSummary(@PathVariable Long userId) {
-        return ResponseEntity.ok(cartService.getCartSummary(userId));
+    public ResponseEntity<ApiResponse<CartSummaryResponse>> getCartSummary(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("Cart summary fetched successfully",
+                cartService.getCartSummary(userId)));
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<Void>> clearCart(@PathVariable Long userId) {
         cartService.clearCart(userId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok("Cart cleared successfully", null));
     }
 }

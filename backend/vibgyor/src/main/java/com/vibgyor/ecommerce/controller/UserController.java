@@ -1,11 +1,15 @@
 package com.vibgyor.ecommerce.controller;
 
+import com.vibgyor.ecommerce.dto.common.ApiResponse;
+import com.vibgyor.ecommerce.dto.request.user.ChangePasswordRequest;
+import com.vibgyor.ecommerce.dto.request.user.UpdateProfileRequest;
 import com.vibgyor.ecommerce.dto.response.user.UserProfileResponse;
 import com.vibgyor.ecommerce.dto.response.user.UserResponse;
 import com.vibgyor.ecommerce.dto.response.user.UserSummaryResponse;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.entity.enums.UserRole;
 import com.vibgyor.ecommerce.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,40 +24,68 @@ public class UserController {
 
     private final UserService userService;
 
+    // Optional: restrict to owner or admin for security
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.userId")
     @GetMapping("/{userId}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getUserById(userId));
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("User fetched successfully",
+                userService.getUserById(userId)));
     }
 
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.userId")
     @GetMapping("/{userId}/profile")
-    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getUserProfile(userId));
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("User profile fetched successfully",
+                userService.getUserProfile(userId)));
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.userId")
+    @PatchMapping("/{userId}/profile")
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateProfileRequest request) {
+
+        UserResponse updated = userService.updateProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok("Profile updated successfully", updated));
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.userId")
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @PathVariable Long userId,
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        userService.changePassword(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok("Password changed successfully", null));
     }
 
     @GetMapping
-    public ResponseEntity<List<UserSummaryResponse>> getUsers(
+    public ResponseEntity<ApiResponse<List<UserSummaryResponse>>> getUsers(
             @RequestParam(required = false) UserRole role,
             @RequestParam(required = false) Status status,
-            @RequestParam(required = false) String keyword
-    ) {
+            @RequestParam(required = false) String keyword) {
+
+        List<UserSummaryResponse> users;
         if (role != null) {
-            return ResponseEntity.ok(userService.getUsersByRole(role));
+            users = userService.getUsersByRole(role);
+        } else if (status != null) {
+            users = userService.getUsersByStatus(status);
+        } else if (keyword != null && !keyword.isBlank()) {
+            users = userService.searchUsersByName(keyword);
+        } else {
+            users = userService.getAllUsers();
         }
-        if (status != null) {
-            return ResponseEntity.ok(userService.getUsersByStatus(status));
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            return ResponseEntity.ok(userService.searchUsersByName(keyword));
-        }
-        return ResponseEntity.ok(userService.getAllUsers());
+        return ResponseEntity.ok(ApiResponse.ok("Users fetched successfully", users));
     }
 
+    // Recommended: admin-only
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{userId}/status")
-    public ResponseEntity<UserResponse> updateUserStatus(
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserStatus(
             @PathVariable Long userId,
-            @RequestParam Status status
-    ) {
-        return ResponseEntity.ok(userService.updateUserStatus(userId, status));
+            @RequestParam Status status) {
+        return ResponseEntity.ok(ApiResponse.ok("User status updated successfully",
+                userService.updateUserStatus(userId, status)));
     }
 }

@@ -2,40 +2,26 @@ import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Package, Tag, ClipboardList,
-  Users, LogOut, Menu, X, ChevronRight, Shield,
+  Users, LogOut, Menu, ChevronRight, Shield,
 } from "lucide-react";
-
-function getStoredAuth() {
-  try {
-    const token = localStorage.getItem("token");
-    const user  = JSON.parse(localStorage.getItem("user") || "null");
-    return { token, user };
-  } catch { return { token: null, user: null }; }
-}
+import useAuth from "../hooks/useAuth";
 
 const NAV_ITEMS = [
-  { to: "/admin/dashboard",  label: "Dashboard",  Icon: LayoutDashboard },
-  { to: "/admin/products",   label: "Products",   Icon: Package         },
-  { to: "/admin/categories", label: "Categories", Icon: Tag             },
-  { to: "/admin/orders",     label: "Orders",     Icon: ClipboardList   },
-  { to: "/admin/users",      label: "Users",      Icon: Users           },
+  { to: "/admin/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { to: "/admin/products",  label: "Products",  Icon: Package         },
+  { to: "/admin/categories",label: "Categories",Icon: Tag             },
+  { to: "/admin/orders",    label: "Orders",    Icon: ClipboardList   },
+  { to: "/admin/users",     label: "Users",     Icon: Users           },
 ];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
-  const { token, user } = getStoredAuth();
+  const { user, logout, isAdmin, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const isAdmin = token && (user?.role === "ADMIN" || user?.role === "ROLE_ADMIN");
-
-  if (!token)   { navigate("/login", { replace: true }); return null; }
+  if (loading) return null;
+  if (!user)    { navigate("/login", { replace: true }); return null; }
   if (!isAdmin) { navigate("/",      { replace: true }); return null; }
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login", { replace: true });
-  };
 
   const initials = user?.firstName
     ? (user.firstName[0] + (user.lastName?.[0] ?? "")).toUpperCase()

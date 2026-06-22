@@ -1,4 +1,5 @@
 import Navbar from "../components/navbar/Navbar";
+import AnnouncementBar from "../components/navbar/AnnouncementBar";
 import Footer from "../components/footer/Footer";
 import { Outlet, useLocation } from "react-router-dom";
 import { useEffect } from "react";
@@ -13,6 +14,7 @@ export default function MainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 antialiased">
       <ScrollToTop />
+      <AnnouncementBar/>
       <Navbar />
       <main className="flex-1">
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

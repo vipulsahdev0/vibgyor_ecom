@@ -1,5 +1,6 @@
 package com.vibgyor.ecommerce.controller;
 
+import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.wishlist.AddToWishlistRequest;
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistResponse;
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistSummaryResponse;
@@ -17,36 +18,40 @@ public class WishlistController {
     private final WishlistService wishlistService;
 
     @GetMapping
-    public ResponseEntity<WishlistResponse> getWishlistByUserId(@PathVariable Long userId) {
-        return ResponseEntity.ok(wishlistService.getWishlistByUserId(userId));
+    public ResponseEntity<ApiResponse<WishlistResponse>> getWishlistByUserId(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("Wishlist fetched successfully",
+                wishlistService.getWishlistByUserId(userId)));
     }
 
     @PostMapping("/items")
-    public ResponseEntity<WishlistResponse> addToWishlist(
+    public ResponseEntity<ApiResponse<WishlistResponse>> addToWishlist(
             @PathVariable Long userId,
-            @Valid @RequestBody AddToWishlistRequest request
-    ) {
-        return ResponseEntity.ok(wishlistService.addToWishlist(userId, request));
+            @Valid @RequestBody AddToWishlistRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Product added to wishlist",
+                wishlistService.addToWishlist(userId, request)));
     }
 
     @DeleteMapping("/items/{productId}")
-    public ResponseEntity<WishlistResponse> removeFromWishlist(
+    public ResponseEntity<ApiResponse<WishlistResponse>> removeFromWishlist(
             @PathVariable Long userId,
-            @PathVariable Long productId
-    ) {
-        return ResponseEntity.ok(wishlistService.removeFromWishlist(userId, productId));
+            @PathVariable Long productId) {
+        return ResponseEntity.ok(ApiResponse.ok("Product removed from wishlist",
+                wishlistService.removeFromWishlist(userId, productId)));
     }
 
     @DeleteMapping
-    public ResponseEntity<WishlistSummaryResponse> clearWishlist(@PathVariable Long userId) {
-        return ResponseEntity.ok(wishlistService.clearWishlist(userId));
+    public ResponseEntity<ApiResponse<WishlistSummaryResponse>> clearWishlist(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok("Wishlist cleared successfully",
+                wishlistService.clearWishlist(userId)));
     }
 
     @GetMapping("/items/{productId}/exists")
-    public ResponseEntity<Boolean> isProductInWishlist(
+    public ResponseEntity<ApiResponse<Boolean>> isProductInWishlist(
             @PathVariable Long userId,
-            @PathVariable Long productId
-    ) {
-        return ResponseEntity.ok(wishlistService.isProductInWishlist(userId, productId));
+            @PathVariable Long productId) {
+        return ResponseEntity.ok(ApiResponse.ok("Check completed",
+                wishlistService.isProductInWishlist(userId, productId)));
     }
 }

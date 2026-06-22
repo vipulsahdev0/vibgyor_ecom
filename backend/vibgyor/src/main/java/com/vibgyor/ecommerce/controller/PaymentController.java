@@ -1,16 +1,22 @@
 package com.vibgyor.ecommerce.controller;
 
+import com.vibgyor.ecommerce.dto.common.ApiResponse;
+import com.vibgyor.ecommerce.dto.request.payment.CreatePaymentRequest;
 import com.vibgyor.ecommerce.dto.request.payment.PaymentRequest;
 import com.vibgyor.ecommerce.dto.request.payment.PaymentStatusUpdateRequest;
+import com.vibgyor.ecommerce.dto.request.payment.VerifyPaymentRequest;
 import com.vibgyor.ecommerce.dto.response.payment.PaymentResponse;
 import com.vibgyor.ecommerce.dto.response.payment.PaymentStatusResponse;
 import com.vibgyor.ecommerce.dto.response.payment.PaymentSummaryResponse;
+import com.vibgyor.ecommerce.security.CustomUserDetails;
 import com.vibgyor.ecommerce.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -23,43 +29,84 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
+    // ─── User-facing endpoints ────────────────────────────────────────────────
+
     @PostMapping
-    public ResponseEntity<PaymentResponse> recordPayment(@Valid @RequestBody PaymentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.recordPayment(request));
+    public ResponseEntity<ApiResponse<PaymentResponse>> recordPayment(
+            @Valid @RequestBody PaymentRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Payment recorded successfully",
+                        paymentService.recordPayment(request, principal.getUserId())));
     }
 
     @GetMapping("/{paymentId}")
-    public ResponseEntity<PaymentResponse> getPaymentById(@PathVariable Long paymentId) {
-        return ResponseEntity.ok(paymentService.getPaymentById(paymentId));
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentById(
+            @PathVariable Long paymentId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(ApiResponse.ok("Payment fetched successfully",
+                paymentService.getPaymentById(paymentId, principal.getUserId())));
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<PaymentResponse> getPaymentByOrderId(@PathVariable Long orderId) {
-        return ResponseEntity.ok(paymentService.getPaymentByOrderId(orderId));
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByOrderId(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(ApiResponse.ok("Payment fetched successfully",
+                paymentService.getPaymentByOrderId(orderId, principal.getUserId())));
     }
 
     @GetMapping("/transaction/{transactionId}")
-    public ResponseEntity<PaymentResponse> getPaymentByTransactionId(@PathVariable String transactionId) {
-        return ResponseEntity.ok(paymentService.getPaymentByTransactionId(transactionId));
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByTransactionId(
+            @PathVariable String transactionId) {
+        return ResponseEntity.ok(ApiResponse.ok("Payment fetched successfully",
+                paymentService.getPaymentByTransactionId(transactionId)));
     }
 
+    // ─── New checkout lifecycle endpoints ─────────────────────────────────────
+
+    @PostMapping("/create")
+    public ResponseEntity<ApiResponse<PaymentResponse>> createPayment(
+            @Valid @RequestBody CreatePaymentRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Payment created successfully",
+                        paymentService.createPayment(request, principal.getUserId())));
+    }
+
+    @PostMapping("/verify")
+    public ResponseEntity<ApiResponse<PaymentResponse>> verifyPayment(
+            @Valid @RequestBody VerifyPaymentRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(ApiResponse.ok("Payment verified successfully",
+                paymentService.verifyAndUpdatePayment(request, principal.getUserId())));
+    }
+
+    // ─── Admin-only endpoints ─────────────────────────────────────────────────
+
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{paymentId}/status")
-    public ResponseEntity<PaymentStatusResponse> updatePaymentStatus(
+    public ResponseEntity<ApiResponse<PaymentStatusResponse>> updatePaymentStatus(
             @PathVariable Long paymentId,
-            @Valid @RequestBody PaymentStatusUpdateRequest request
-    ) {
-        return ResponseEntity.ok(paymentService.updatePaymentStatus(paymentId, request));
+            @Valid @RequestBody PaymentStatusUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Payment status updated successfully",
+                paymentService.updatePaymentStatus(paymentId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public ResponseEntity<List<PaymentSummaryResponse>> getPayments(
+    public ResponseEntity<ApiResponse<List<PaymentSummaryResponse>>> getPayments(
             @RequestParam(required = false) String paymentStatus,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end
-    ) {
-        if (paymentStatus != null && start != null && end != null) {
-            return ResponseEntity.ok(paymentService.getPaymentsByStatusAndDateRange(paymentStatus, start, end));
-        }
-        return ResponseEntity.ok(paymentService.getAllPayments());
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+
+        List<PaymentSummaryResponse> payments =
+                (paymentStatus != null && start != null && end != null)
+                        ? paymentService.getPaymentsByStatusAndDateRange(paymentStatus, start, end)
+                        : paymentService.getAllPayments();
+
+        return ResponseEntity.ok(ApiResponse.ok("Payments fetched successfully", payments));
     }
 }

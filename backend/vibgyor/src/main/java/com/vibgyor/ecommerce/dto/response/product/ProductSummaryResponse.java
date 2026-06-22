@@ -1,5 +1,6 @@
 package com.vibgyor.ecommerce.dto.response.product;
 
+import com.vibgyor.ecommerce.entity.enums.Status;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -18,4 +19,5 @@ public class ProductSummaryResponse {
     private String primaryImageUrl;
     private String categoryName;
     private Integer stockQuantity;
+    private Status status;
 }

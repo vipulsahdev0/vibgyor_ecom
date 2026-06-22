@@ -1,78 +1,37 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import {
-  Tag, Plus, Pencil, RefreshCw, AlertCircle,
-  Search, Loader2, ToggleLeft, ToggleRight, PackageSearch, X,
+  Tag, Plus, Pencil, RefreshCw,
+  Loader2, ToggleLeft, ToggleRight, PackageSearch, X, Search,
 } from "lucide-react";
 import {
   getCategories, createCategory, updateCategory, updateCategoryStatus,
 } from "../../api/categoryApi";
 import CategoryForm from "../../components/categories/CategoryForm";
+import StatCard from "../../components/shared/StatCard";
+import TableSkeleton from "../../components/shared/TableSkeleton";
+import ErrorBanner from "../../components/shared/ErrorBanner";
+import PageHeader from "../../components/shared/PageHeader";
 
+// ─── Style maps aligned with backend Status enum (ACTIVE | INACTIVE) ─────────
 const STATUS_STYLES = {
   ACTIVE:   "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   INACTIVE: "bg-rose-50    text-rose-700    ring-1 ring-inset ring-rose-200",
 };
 
-function TableSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="divide-y divide-slate-100">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-slate-100" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-32 rounded bg-slate-100" />
-              <div className="h-3 w-56 rounded bg-slate-100" />
-            </div>
-            <div className="h-5 w-12 rounded-full bg-slate-100" />
-            <div className="h-5 w-16 rounded-full bg-slate-100" />
-            <div className="flex gap-2">
-              <div className="h-8 w-16 rounded-xl bg-slate-100" />
-              <div className="h-8 w-24 rounded-xl bg-slate-100" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, accent, Icon }) {
-  const map = {
-    slate:   { bg: "bg-slate-50",   icon: "text-slate-500",   val: "text-slate-900"   },
-    emerald: { bg: "bg-emerald-50", icon: "text-emerald-500", val: "text-emerald-700" },
-    rose:    { bg: "bg-rose-50",    icon: "text-rose-500",    val: "text-rose-700"    },
-    indigo:  { bg: "bg-indigo-50",  icon: "text-indigo-500",  val: "text-indigo-700"  },
-  };
-  const c = map[accent] ?? map.slate;
-  return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</p>
-          <p className={`mt-2 text-2xl font-black tabular-nums ${c.val}`}>{value}</p>
-        </div>
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.bg}`}>
-          <Icon className={`h-4.5 w-4.5 ${c.icon}`} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminCategories() {
-  const [categories,      setCategories]      = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [formLoading,     setFormLoading]     = useState(false);
-  const [statusLoadingId, setStatusLoadingId] = useState(null);
-  const [selectedCategory,setSelectedCategory]= useState(null);
-  const [showForm,        setShowForm]        = useState(false);
-  const [error,           setError]           = useState("");
-  const [search,          setSearch]          = useState("");
-  const [filterStatus,    setFilterStatus]    = useState("ALL");
-  const [refreshing,      setRefreshing]      = useState(false);
+  const [categories,       setCategories]       = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [formLoading,      setFormLoading]      = useState(false);
+  const [statusLoadingId,  setStatusLoadingId]  = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showForm,         setShowForm]         = useState(false);
+  const [error,            setError]            = useState("");
+  const [search,           setSearch]           = useState("");
+  const [filterStatus,     setFilterStatus]     = useState("ALL");
+  const [refreshing,       setRefreshing]       = useState(false);
 
+  // ── Fetch — GET /api/categories ─────────────────────────────────────────
   const fetchCategories = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true); else setRefreshing(true);
@@ -89,10 +48,10 @@ export default function AdminCategories() {
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
   const closeForm = () => { setSelectedCategory(null); setShowForm(false); };
-
   const openCreate = () => { setSelectedCategory(null); setShowForm(true); };
   const openEdit   = (cat) => { setSelectedCategory(cat); setShowForm(true); };
 
+  // ── Create — POST /api/categories ───────────────────────────────────────
   const handleCreate = async (data) => {
     try {
       setFormLoading(true);
@@ -106,10 +65,11 @@ export default function AdminCategories() {
       closeForm();
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Failed to create category");
+      toast.error(err?.message || "Failed to create category");
     } finally { setFormLoading(false); }
   };
 
+  // ── Update — PUT /api/categories/{id} ───────────────────────────────────
   const handleUpdate = async (data) => {
     if (!selectedCategory?.id) return;
     try {
@@ -124,10 +84,11 @@ export default function AdminCategories() {
       closeForm();
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Failed to update category");
+      toast.error(err?.message || "Failed to update category");
     } finally { setFormLoading(false); }
   };
 
+  // ── Toggle status — PATCH /api/categories/{id}/status ───────────────────
   const handleStatus = async (category) => {
     const nextStatus = category.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     if (!window.confirm(`${nextStatus === "INACTIVE" ? "Deactivate" : "Activate"} "${category.name}"?`)) return;
@@ -138,26 +99,24 @@ export default function AdminCategories() {
       toast.success(`Category ${nextStatus === "ACTIVE" ? "activated" : "deactivated"}`);
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Failed to update status");
+      toast.error(err?.message || "Failed to update status");
     } finally { setStatusLoadingId(null); }
   };
 
-  // Derived stats
-  const totalCategories  = categories.length;
-  const activeCount      = useMemo(() => categories.filter(c => c.status === "ACTIVE").length,   [categories]);
-  const inactiveCount    = totalCategories - activeCount;
-  const totalLinked      = useMemo(() => categories.reduce((s, c) => s + Number(c.productCount || 0), 0), [categories]);
+  // ── Derived stats ────────────────────────────────────────────────────────
+  const totalCategories = categories.length;
+  const activeCount     = useMemo(() => categories.filter(c => c.status === "ACTIVE").length, [categories]);
+  const inactiveCount   = totalCategories - activeCount;
+  const totalLinked     = useMemo(() => categories.reduce((s, c) => s + Number(c.productCount || 0), 0), [categories]);
 
-  // Filtered list
-  const filteredCategories = useMemo(() => {
-    return categories.filter(cat => {
-      const matchSearch = !search ||
-        cat.name?.toLowerCase().includes(search.toLowerCase()) ||
-        cat.description?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = filterStatus === "ALL" || cat.status === filterStatus;
-      return matchSearch && matchStatus;
-    });
-  }, [categories, search, filterStatus]);
+  // ── Filtered list ────────────────────────────────────────────────────────
+  const filteredCategories = useMemo(() => categories.filter(cat => {
+    const matchSearch = !search ||
+      cat.name?.toLowerCase().includes(search.toLowerCase()) ||
+      cat.description?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "ALL" || cat.status === filterStatus;
+    return matchSearch && matchStatus;
+  }), [categories, search, filterStatus]);
 
   if (loading) return (
     <section className="space-y-6">
@@ -182,38 +141,24 @@ export default function AdminCategories() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Categories</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage product categories, descriptions, and visibility.</p>
+          <p className="mt-1 text-sm text-slate-500">Manage product categories and their visibility.</p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button onClick={() => fetchCategories(true)} disabled={refreshing}
-            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-50">
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
-          </button>
-          <button onClick={openCreate}
-            className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95">
-            <Plus className="h-4 w-4" /> Add Category
-          </button>
-        </div>
+        <button onClick={openCreate}
+          className="flex items-center gap-1.5 self-start rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 sm:self-auto">
+          <Plus className="h-4 w-4" /> Add Category
+        </button>
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total"         value={totalCategories} accent="slate"   Icon={Tag}            />
-        <StatCard title="Active"        value={activeCount}     accent="emerald" Icon={ToggleRight}    />
-        <StatCard title="Inactive"      value={inactiveCount}   accent="rose"    Icon={ToggleLeft}     />
-        <StatCard title="Products Linked" value={totalLinked}   accent="indigo"  Icon={PackageSearch}  />
+        <StatCard title="Total"           value={totalCategories} accent="slate"   Icon={Tag}           />
+        <StatCard title="Active"          value={activeCount}     accent="emerald" Icon={ToggleRight}   />
+        <StatCard title="Inactive"        value={inactiveCount}   accent="rose"    Icon={ToggleLeft}    />
+        <StatCard title="Products Linked" value={totalLinked}     accent="indigo"  Icon={PackageSearch} />
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          <span className="flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}</span>
-          <button onClick={() => fetchCategories()}
-            className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700">
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <ErrorBanner message={error} />}
 
       {/* Inline form panel */}
       {showForm && (
@@ -248,13 +193,17 @@ export default function AdminCategories() {
       {/* Search + filter */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Search categories…" value={search}
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="search"
+            placeholder="Search categories…"
+            value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
         </div>
         <div className="flex gap-1.5">
-          {["ALL","ACTIVE","INACTIVE"].map(f => (
+          {["ALL", "ACTIVE", "INACTIVE"].map(f => (
             <button key={f} onClick={() => setFilterStatus(f)}
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                 filterStatus === f
@@ -277,7 +226,7 @@ export default function AdminCategories() {
               ? <button onClick={() => { setSearch(""); setFilterStatus("ALL"); }}
                   className="mt-2 text-xs text-indigo-600 hover:underline">Clear filters</button>
               : <button onClick={openCreate}
-                  className="mt-3 flex items-center gap-1 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 mx-auto">
+                  className="mx-auto mt-3 flex items-center gap-1 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
                   <Plus className="h-3.5 w-3.5" /> Add your first category
                 </button>
             }
@@ -292,7 +241,7 @@ export default function AdminCategories() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  {["Category","Description","Products","Status","Actions"].map((h, i) => (
+                  {["Category", "Description", "Products", "Status", "Actions"].map((h, i) => (
                     <th key={h}
                       className={`px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 ${i === 4 ? "text-right" : "text-left"}`}>
                       {h}
@@ -303,12 +252,14 @@ export default function AdminCategories() {
               <tbody className="divide-y divide-slate-50">
                 {filteredCategories.map(category => {
                   const isStatusLoading = statusLoadingId === category.id;
+                  // categoryApi.js normalises the field as categoryName
+                  const displayName = category.categoryName ?? category.name;
                   return (
-                    <tr key={category.id} className="group hover:bg-slate-50/70 transition-colors">
+                    <tr key={category.id} className="group transition-colors hover:bg-slate-50/70">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           {category.imageUrl
-                            ? <img src={category.imageUrl} alt={category.name}
+                            ? <img src={category.imageUrl} alt={displayName}
                                 width={36} height={36} loading="lazy"
                                 className="h-9 w-9 shrink-0 rounded-xl object-cover border border-slate-100" />
                             : <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
@@ -316,7 +267,7 @@ export default function AdminCategories() {
                               </div>
                           }
                           <div>
-                            <p className="text-sm font-bold text-slate-900">{category.name}</p>
+                            <p className="text-sm font-bold text-slate-900">{displayName}</p>
                             <p className="text-[11px] text-slate-400">ID #{category.id}</p>
                           </div>
                         </div>
@@ -366,13 +317,13 @@ export default function AdminCategories() {
           <div className="space-y-3 lg:hidden">
             {filteredCategories.map(category => {
               const isStatusLoading = statusLoadingId === category.id;
+              const displayName = category.categoryName ?? category.name;
               return (
-                <article key={category.id}
-                  className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                <article key={category.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       {category.imageUrl
-                        ? <img src={category.imageUrl} alt={category.name}
+                        ? <img src={category.imageUrl} alt={displayName}
                             width={40} height={40} loading="lazy"
                             className="h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-100" />
                         : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
@@ -380,7 +331,7 @@ export default function AdminCategories() {
                           </div>
                       }
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{category.name}</p>
+                        <p className="text-sm font-bold text-slate-900">{displayName}</p>
                         <p className="text-[11px] text-slate-400">ID #{category.id}</p>
                       </div>
                     </div>

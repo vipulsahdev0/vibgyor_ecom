@@ -30,7 +30,10 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
 
     Optional<Order> findByOrderNumber(String orderNumber);
 
-    List<Order> findByOrderStatusAndPaymentStatus(OrderStatus orderStatus, PaymentStatus paymentStatus);
+
+    long countByOrderStatus(OrderStatus orderStatus);
+
+    List<Order> findByPaymentStatus(PaymentStatus paymentStatus);
 
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 }

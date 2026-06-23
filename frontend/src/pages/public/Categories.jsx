@@ -20,7 +20,7 @@ const normalizeCategory = (c) => ({
   id: c?.id,
   name: c?.name ?? c?.categoryName ?? "",
   description: c?.description ?? "",
-  imageUrl: c?.imageUrl ?? "",
+  imageUrl: typeof c?.imageUrl === "string" ? c.imageUrl.trim() : "",
   status: c?.status ?? "ACTIVE",
   productCount: Number(c?.productCount ?? 0),
 });
@@ -39,6 +39,37 @@ function CategorySkeleton() {
   );
 }
 
+function CategoryImage({ src, alt, fallbackClassName, iconClassName, imgClassName }) {
+  const [failed, setFailed] = useState(false);
+  const validSrc = typeof src === "string" ? src.trim() : "";
+
+  useEffect(() => {
+    setFailed(false);
+  }, [validSrc]);
+
+  if (!validSrc || failed) {
+    return (
+      <div className={fallbackClassName}>
+        <ImageIcon className={iconClassName} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={validSrc}
+      alt={alt}
+      className={imgClassName}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={(e) => {
+        console.log("Category image failed:", validSrc);
+        setFailed(true);
+      }}
+    />
+  );
+}
+
 function CategoryCard({ category }) {
   const count = category.productCount ?? 0;
 
@@ -46,18 +77,11 @@ function CategoryCard({ category }) {
     <article className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
       <Link to={`/products?categoryId=${category.id}`} className="block">
         <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-          {category.imageUrl ? (
-            <img
-              src={category.imageUrl}
-              alt={category.name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-300">
-              <ImageIcon className="h-10 w-10" />
-            </div>
-          )}
+          <CategoryImage
+            src={category.imageUrl}
+            alt={category.name}
+            imgClassName="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
 
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/60 via-black/25 to-transparent p-4">
             <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
@@ -94,19 +118,12 @@ function CategoryRow({ category }) {
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
       <div className="flex items-center gap-4">
-        <div className="h-14 w-14 overflow-hidden rounded-2xl bg-slate-100 shrink-0">
-          {category.imageUrl ? (
-            <img
-              src={category.imageUrl}
-              alt={category.name}
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-slate-300">
-              <Tag className="h-5 w-5" />
-            </div>
-          )}
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+          <CategoryImage
+            src={category.imageUrl}
+            alt={category.name}
+            iconClassName="h-5 w-5"
+          />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -120,7 +137,7 @@ function CategoryRow({ category }) {
           </p>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+        <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 sm:flex">
           <Package className="h-3.5 w-3.5" />
           {count}
         </div>
@@ -150,7 +167,7 @@ export default function Categories() {
   const updateParams = (patch) => {
     const next = new URLSearchParams(searchParams);
     Object.entries(patch).forEach(([key, value]) => {
-      if (!value) next.delete(key);
+      if (value == null || value === "") next.delete(key);
       else next.set(key, value);
     });
     setSearchParams(next);
@@ -158,9 +175,12 @@ export default function Categories() {
 
   const fetchCategories = useCallback(async (isRefresh = false) => {
     try {
-      isRefresh ? setRefreshing(true) : setLoading(true);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
       const data = await getCategories({ status: "ACTIVE" });
-      setCategories(data.map(normalizeCategory));
+      setCategories(Array.isArray(data) ? data.map(normalizeCategory) : []);
+
       if (isRefresh) toast.success("Categories refreshed");
     } catch (error) {
       console.error(error);
@@ -214,7 +234,9 @@ export default function Categories() {
                 Catalog
               </span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Categories</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Categories
+            </h1>
             {!loading && (
               <p className="mt-1 text-sm text-slate-500">
                 {categories.length} active categories · {totalProducts} total products
@@ -224,6 +246,7 @@ export default function Categories() {
 
           {!loading && (
             <button
+              type="button"
               onClick={() => fetchCategories(true)}
               disabled={refreshing}
               className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
@@ -240,7 +263,9 @@ export default function Categories() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Featured by catalog size
               </p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-900">{featured.name}</h2>
+              <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                {featured.name}
+              </h2>
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
                 {featured.description || "Browse this category to see its available products."}
               </p>
@@ -259,18 +284,11 @@ export default function Categories() {
             </div>
 
             <div className="overflow-hidden rounded-3xl bg-slate-200">
-              {featured.imageUrl ? (
-                <img
-                  src={featured.imageUrl}
-                  alt={featured.name}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-full min-h-44 items-center justify-center text-slate-300">
-                  <Tag className="h-10 w-10" />
-                </div>
-              )}
+              <CategoryImage
+                src={featured.imageUrl}
+                alt={featured.name}
+                fallbackClassName="flex h-full min-h-44 items-center justify-center text-slate-300"
+              />
             </div>
           </div>
         )}
@@ -305,15 +323,19 @@ export default function Categories() {
 
             <div className="inline-flex items-center gap-1 rounded-2xl bg-slate-100 p-1">
               <button
+                type="button"
                 onClick={() => updateParams({ view: "grid" })}
-                className={`rounded-xl p-2 ${view === "grid" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400"}`}
+                className={`rounded-xl p-2 ${view === "grid" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400"
+                  }`}
                 aria-label="Grid view"
               >
                 <LayoutGrid className="h-4 w-4" />
               </button>
               <button
+                type="button"
                 onClick={() => updateParams({ view: "list" })}
-                className={`rounded-xl p-2 ${view === "list" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400"}`}
+                className={`rounded-xl p-2 ${view === "list" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400"
+                  }`}
                 aria-label="List view"
               >
                 <List className="h-4 w-4" />

@@ -18,9 +18,9 @@ public class CategoryMapper {
         }
 
         return Category.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .imageUrl(request.getImageUrl())
+                .name(normalizeRequired(request.getName()))
+                .description(normalizeOptional(request.getDescription()))
+                .imageUrl(normalizeOptional(request.getImageUrl()))
                 .status(Status.ACTIVE)
                 .build();
     }
@@ -30,9 +30,9 @@ public class CategoryMapper {
             return;
         }
 
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
-        category.setImageUrl(request.getImageUrl());
+        category.setName(normalizeRequired(request.getName()));
+        category.setDescription(normalizeOptional(request.getDescription()));
+        category.setImageUrl(normalizeOptional(request.getImageUrl()));
     }
 
     public static CategoryResponse toResponse(Category category) {
@@ -82,5 +82,18 @@ public class CategoryMapper {
                 .status(category.getStatus())
                 .message(message)
                 .build();
+    }
+
+    private static String normalizeRequired(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

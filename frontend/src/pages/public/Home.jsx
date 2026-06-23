@@ -131,7 +131,7 @@ export default function Home() {
         <div className="relative z-10 max-w-3xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
-            Welcome to Vibgyor Ecommerce
+            Welcome to Vibgyor E-Commerce
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">

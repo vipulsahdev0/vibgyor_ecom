@@ -55,7 +55,7 @@ export default function AuthLayout() {
                             bg-white/5 px-3 py-1.5 text-xs font-semibold tracking-wider
                             text-slate-300 backdrop-blur-sm">
               <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-              Vibgyor Commerce
+              Vibgyor E-Commerce
             </div>
 
             <h1 className="text-3xl font-bold leading-tight tracking-tight">
@@ -112,7 +112,7 @@ export default function AuthLayout() {
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
                 <Sparkles className="w-3.5 h-3.5 text-white" />
               </span>
-              <span className="text-sm font-bold text-indigo-600 tracking-wide">Vibgyor Commerce</span>
+              <span className="text-sm font-bold text-indigo-600 tracking-wide">Vibgyor E-Commerce</span>
             </div>
             <Link to="/" className="text-xs text-slate-400 hover:text-slate-700 transition-colors">
               ← Store

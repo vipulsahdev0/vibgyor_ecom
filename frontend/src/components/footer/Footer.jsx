@@ -96,7 +96,7 @@ export default function Footer() {
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 py-6 sm:flex-row">
           <p className="text-xs text-slate-400">
-            © {new Date().getFullYear()} Vibgyor Commerce. All rights reserved.
+            © {new Date().getFullYear()} Vibgyor E-Commerce. All rights reserved.
           </p>
 
           <div className="flex items-center gap-2">

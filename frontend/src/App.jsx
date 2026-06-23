@@ -5,7 +5,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthLayout, AdminLayout, UserLayout, MainLayout } from "./layouts";
 
 import { Dashboard, AdminCategories, AdminProducts, Orders, Users } from "./pages/admin";
-import { Home, Login, Register, NotFound, Categories, Products } from "./pages/public";
+import { Home, Login, Register, NotFound, Categories, Products, ProductDetail } from "./pages/public";
 import { Cart, Checkout, OrderDetails, UserOrders, PaymentSuccess, Profile, Wishlist } from "./pages/user";
 
 export default function App() {
@@ -27,6 +27,7 @@ export default function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/categories" element={<Categories />} />
         </Route>
 

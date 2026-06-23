@@ -9,6 +9,8 @@ import com.vibgyor.ecommerce.dto.response.user.UserSummaryResponse;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.entity.enums.UserRole;
 import com.vibgyor.ecommerce.service.UserService;
+import com.vibgyor.ecommerce.security.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,25 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        Long userId = principal.getUserId();
+        UserResponse user = userService.getUserById(userId);
+        return ResponseEntity.ok(ApiResponse.ok("Current user fetched successfully", user));
+    }
+
+    @GetMapping("/me/profile")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getCurrentUserProfile(
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        Long userId = principal.getUserId();
+        UserProfileResponse profile = userService.getUserProfile(userId);
+        return ResponseEntity.ok(ApiResponse.ok("Current user profile fetched successfully", profile));
+    }
 
     // Optional: restrict to owner or admin for security
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.userId")

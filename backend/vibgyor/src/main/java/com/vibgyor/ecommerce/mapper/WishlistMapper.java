@@ -1,10 +1,11 @@
 package com.vibgyor.ecommerce.mapper;
+import com.vibgyor.ecommerce.util.ProductImageUtil;
+
 
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistItemResponse;
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistResponse;
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistSummaryResponse;
 import com.vibgyor.ecommerce.entity.Product;
-import com.vibgyor.ecommerce.entity.ProductImage;
 import com.vibgyor.ecommerce.entity.Wishlist;
 import com.vibgyor.ecommerce.entity.WishlistItem;
 import org.springframework.stereotype.Component;
@@ -15,41 +16,17 @@ import java.util.List;
 @Component
 public class WishlistMapper {
 
+
     public WishlistItemResponse toWishlistItemResponse(WishlistItem item) {
-
-        if (item == null) {
-            return null;
-        }
-
+        if (item == null) return null;
         Product product = item.getProduct();
-
-        String productImageUrl = null;
-
-        if (product != null
-                && product.getImages() != null
-                && !product.getImages().isEmpty()) {
-
-            productImageUrl = product.getImages().stream()
-                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                    .findFirst()
-                    .map(ProductImage::getImageUrl)
-                    .orElseGet(() ->
-                            product.getImages().stream()
-                                    .findFirst()
-                                    .map(ProductImage::getImageUrl)
-                                    .orElse(null)
-                    );
-        }
-
         return WishlistItemResponse.builder()
                 .wishlistItemId(item.getId())
                 .productId(product != null ? product.getId() : null)
                 .productName(product != null ? product.getName() : null)
-                .productImageUrl(productImageUrl)
+                .productImageUrl(ProductImageUtil.extractPrimaryImageUrl(product))
                 .price(product != null ? product.getPrice() : null)
-                .discountedPrice(product != null
-                        ? product.getDiscountedPrice()
-                        : null)
+                .discountedPrice(product != null ? product.getDiscountedPrice() : null)
                 .addedAt(item.getAddedAt())
                 .build();
     }

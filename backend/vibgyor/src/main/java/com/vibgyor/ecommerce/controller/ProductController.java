@@ -9,6 +9,10 @@ import com.vibgyor.ecommerce.dto.response.product.ProductResponse;
 import com.vibgyor.ecommerce.dto.response.product.ProductSummaryResponse;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.service.ProductService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -61,34 +65,30 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ProductSummaryResponse>>> getProducts(
+    public ResponseEntity<ApiResponse<Page<ProductSummaryResponse>>> getProducts(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Status status,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) Boolean inStock) {
-
-        boolean hasFilter = categoryId != null || status != null
-                || (keyword != null && !keyword.isBlank())
-                || minPrice != null || maxPrice != null || inStock != null;
-
-        if (!hasFilter) {
-            return ResponseEntity.ok(ApiResponse.ok("Products fetched successfully",
-                    productService.getAllProducts()));
-        }
-
-        if (categoryId != null && status == null && keyword == null
-                && minPrice == null && maxPrice == null && inStock == null) {
-            return ResponseEntity.ok(ApiResponse.ok("Products fetched successfully",
-                    productService.getProductsByCategory(categoryId)));
-        }
-
+            @RequestParam(required = false) Boolean inStock,
+            @PageableDefault(
+                    page = 0,
+                    size = 12,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable
+    ) {
         ProductFilterRequest filterRequest = ProductFilterRequest.builder()
-                .categoryId(categoryId).status(status).keyword(keyword)
-                .minPrice(minPrice).maxPrice(maxPrice).inStock(inStock)
+                .categoryId(categoryId)
+                .status(status)
+                .keyword(keyword)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .inStock(inStock)
                 .build();
+
         return ResponseEntity.ok(ApiResponse.ok("Products fetched successfully",
-                productService.getProductsByFilter(filterRequest)));
+                productService.getProductsByFilter(filterRequest, pageable)));
     }
 }

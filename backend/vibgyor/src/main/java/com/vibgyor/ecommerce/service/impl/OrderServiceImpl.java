@@ -11,6 +11,7 @@ import com.vibgyor.ecommerce.entity.enums.PaymentStatus;
 import com.vibgyor.ecommerce.mapper.OrderMapper;
 import com.vibgyor.ecommerce.repository.*;
 import com.vibgyor.ecommerce.service.OrderService;
+import com.vibgyor.ecommerce.util.UserLookupHelper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,8 +30,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepo orderRepo;
     private final OrderItemRepo orderItemRepo;
     private final CartRepo cartRepo;
-    private final CartItemRepo cartItemRepo;
     private final UserRepo userRepo;
+    private final UserLookupHelper userLookupHelper;
     private final AddressRepo addressRepo;
     private final OrderMapper orderMapper;
     private final ProductRepo productRepo;
@@ -42,9 +43,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse placeOrder(Long userId, PlaceOrderRequest request) {
 
         // 1. Load user
-        User user = userRepo.findById(userId)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found with id: " + userId));
+        User user = userLookupHelper.findById(userId);
 
         // 2. Load cart with items
         Cart cart = cartRepo.findByUserIdWithItems(userId)

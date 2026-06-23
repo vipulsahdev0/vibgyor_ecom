@@ -6,6 +6,7 @@ import com.vibgyor.ecommerce.dto.request.order.PlaceOrderRequest;
 import com.vibgyor.ecommerce.dto.response.order.OrderResponse;
 import com.vibgyor.ecommerce.dto.response.order.OrderStatusResponse;
 import com.vibgyor.ecommerce.dto.response.order.OrderSummaryResponse;
+import com.vibgyor.ecommerce.security.SecurityOwnershipValidator;
 import com.vibgyor.ecommerce.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +22,13 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final SecurityOwnershipValidator ownershipValidator;
 
     @PostMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<OrderResponse>> placeOrder(
             @PathVariable Long userId,
             @Valid @RequestBody PlaceOrderRequest request) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok("Order placed successfully",
                         orderService.placeOrder(userId, request)));
@@ -34,6 +37,7 @@ public class OrderController {
     @GetMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<List<OrderSummaryResponse>>> getOrdersByUser(
             @PathVariable Long userId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Orders fetched successfully",
                 orderService.getOrdersByUser(userId)));
     }

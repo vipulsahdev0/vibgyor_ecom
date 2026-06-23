@@ -9,6 +9,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import OrderTimeline from "../../components/orders/OrderTimeline";
+import OrderStatusBadge from "../../components/orders/OrderStatusBadge";
+import PaymentStatusBadge from "../../components/orders/PaymentStatusBadge";
 
 import { getOrderById, cancelOrder } from "../../api/orderApi";
 
@@ -16,36 +19,18 @@ const formatCurrency = (amount) =>
   amount == null
     ? "₹0.00"
     : new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-      }).format(amount);
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
 
 const formatDate = (date) =>
   date
     ? new Date(date).toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
+      dateStyle: "medium",
+      timeStyle: "short",
+    })
     : "-";
 
-const STATUS_STYLES = {
-  PENDING: "bg-amber-100 text-amber-700",
-  CONFIRMED: "bg-yellow-100 text-yellow-700",
-  SHIPPED: "bg-blue-100 text-blue-700",
-  DELIVERED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-rose-100 text-rose-700",
-};
-
-const PAYMENT_STYLES = {
-  PENDING: "bg-amber-100 text-amber-700",
-  PAID: "bg-emerald-100 text-emerald-700",
-  FAILED: "bg-rose-100 text-rose-700",
-  REFUNDED: "bg-slate-100 text-slate-700",
-};
-
-const badgeClass = (status, map) =>
-  map?.[status?.toUpperCase()] ??
-  "bg-slate-100 text-slate-600";
 
 function LoadingSkeleton() {
   return (
@@ -87,8 +72,8 @@ export default function OrderDetails() {
     } catch (err) {
       setError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load order."
+        err?.message ||
+        "Failed to load order."
       );
     } finally {
       setLoading(false);
@@ -111,16 +96,17 @@ export default function OrderDetails() {
     } catch (err) {
       toast.error(
         err?.response?.data?.message ||
-          "Unable to cancel order"
+        "Unable to cancel order"
       );
     } finally {
       setCancelLoading(false);
     }
   };
+  
 
   const canCancel =
     order &&
-    ["PENDING", "CONFIRMED"].includes(order.orderStatus);
+    ["PENDING_PAYMENT", "CONFIRMED"].includes(order.orderStatus);
 
   if (loading) {
     return <LoadingSkeleton />;
@@ -195,14 +181,10 @@ export default function OrderDetails() {
               Order Status
             </p>
 
-            <span
-              className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(
-                order.orderStatus,
-                STATUS_STYLES
-              )}`}
-            >
-              {order.orderStatus}
-            </span>
+            badgeClass(
+            order.orderStatus,
+            STATUS_STYLES
+            )
           </div>
 
           <div>
@@ -210,14 +192,10 @@ export default function OrderDetails() {
               Payment Status
             </p>
 
-            <span
-              className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(
-                order.paymentStatus,
-                PAYMENT_STYLES
-              )}`}
-            >
-              {order.paymentStatus}
-            </span>
+            badgeClass(
+            order.paymentStatus,
+            PAYMENT_STYLES
+            )
           </div>
         </div>
       </div>

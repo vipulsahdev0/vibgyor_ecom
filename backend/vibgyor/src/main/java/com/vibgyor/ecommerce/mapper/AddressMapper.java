@@ -1,7 +1,6 @@
 package com.vibgyor.ecommerce.mapper;
 
 import com.vibgyor.ecommerce.dto.request.address.AddressRequest;
-import com.vibgyor.ecommerce.dto.request.address.AddressUpdateRequest;
 import com.vibgyor.ecommerce.dto.response.address.AddressResponse;
 import com.vibgyor.ecommerce.dto.response.address.AddressSummaryResponse;
 import com.vibgyor.ecommerce.dto.response.address.DefaultAddressResponse;
@@ -33,11 +32,8 @@ public class AddressMapper {
                 .build();
     }
 
-    public static void updateEntity(Address address, AddressUpdateRequest request) {
-        if (address == null || request == null) {
-            return;
-        }
-
+    public static void updateEntity(Address address, AddressRequest request) {
+        if (address == null || request == null) return;
         address.setFullName(request.getFullName());
         address.setMobile(request.getMobile());
         address.setAddressLine1(request.getAddressLine1());

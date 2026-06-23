@@ -10,7 +10,10 @@ import useAuth from "../../hooks/useAuth";
 import {
   getUserOrders,
   cancelOrder,
+
 } from "../../api/orderApi";
+import OrderCard from "../../components/orders/OrderCard";
+import OrderSearch from "../../components/orders/OrderSearch";
 
 import toast from "react-hot-toast";
 const formatCurrency = (amount) =>
@@ -29,19 +32,15 @@ const formatDate = (date) =>
     })
     : "-";
 
+
 const STATUS_STYLES = {
   DELIVERED: "bg-emerald-100 text-emerald-700",
-  SUCCESS: "bg-emerald-100 text-emerald-700",
-  PAID: "bg-emerald-100 text-emerald-700",
-  PENDING: "bg-amber-100 text-amber-700",
+  PENDING_PAYMENT: "bg-amber-100 text-amber-700",
   PROCESSING: "bg-amber-100 text-amber-700",
-  PLACED: "bg-amber-100 text-amber-700",
   CONFIRMED: "bg-amber-100 text-amber-700",
   CANCELLED: "bg-rose-100 text-rose-700",
-  FAILED: "bg-rose-100 text-rose-700",
-  REJECTED: "bg-rose-100 text-rose-700",
+  REFUNDED: "bg-blue-100 text-blue-700",
   SHIPPED: "bg-blue-100 text-blue-700",
-  DISPATCHED: "bg-blue-100 text-blue-700",
 };
 
 const getBadgeClass = (s = "") =>
@@ -112,6 +111,15 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  const [search, setSearch] = useState("");
+
+const filteredOrders =
+  orders.filter((order) =>
+    order.orderNumber
+      ?.toLowerCase()
+      .includes(search.toLowerCase())
+  );
 
 
   const handleCancel = async (orderId) => {
@@ -196,7 +204,7 @@ export default function Orders() {
 
       {!loading && !error && orders.length > 0 && (
         <div className="space-y-4">
-          {orders.map((order) => {
+          {/* {orders.map((order) => {
             const orderId = order.id;
 
             return (
@@ -252,7 +260,7 @@ export default function Orders() {
 
                 <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
 
-                  {["PENDING", "CONFIRMED"].includes(order.orderStatus) && (
+                  {["PENDING_PAYMENT", "CONFIRMED", "SHIPPED", "DELIVERED"].includes(order.orderStatus) && (
                     <button
                       onClick={() => handleCancel(order.id)}
                       className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
@@ -272,7 +280,14 @@ export default function Orders() {
                 </div>
               </article>
             );
-          })}
+          })} */}
+          {filteredOrders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onCancel={handleCancel}
+            />
+          ))}
         </div>
       )}
     </section>

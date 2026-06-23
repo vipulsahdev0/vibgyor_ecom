@@ -2,9 +2,9 @@ package com.vibgyor.ecommerce.controller;
 
 import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.cart.AddToCartRequest;
-import com.vibgyor.ecommerce.dto.request.cart.UpdateCartItemRequest;
 import com.vibgyor.ecommerce.dto.response.cart.CartResponse;
 import com.vibgyor.ecommerce.dto.response.cart.CartSummaryResponse;
+import com.vibgyor.ecommerce.security.SecurityOwnershipValidator;
 import com.vibgyor.ecommerce.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +17,12 @@ import org.springframework.web.bind.annotation.*;
 public class CartController {
 
     private final CartService cartService;
+    private final SecurityOwnershipValidator ownershipValidator;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCartByUserId(
             @PathVariable Long userId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Cart fetched successfully",
                 cartService.getCartByUserId(userId)));
     }
@@ -29,6 +31,7 @@ public class CartController {
     public ResponseEntity<ApiResponse<CartResponse>> addToCart(
             @PathVariable Long userId,
             @Valid @RequestBody AddToCartRequest request) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Item added to cart",
                 cartService.addToCart(userId, request)));
     }
@@ -36,7 +39,8 @@ public class CartController {
     @PutMapping("/items")
     public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
             @PathVariable Long userId,
-            @Valid @RequestBody UpdateCartItemRequest request) {
+            @Valid @RequestBody AddToCartRequest request) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Cart item updated",
                 cartService.updateCartItem(userId, request)));
     }
@@ -52,6 +56,7 @@ public class CartController {
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<CartSummaryResponse>> getCartSummary(
             @PathVariable Long userId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Cart summary fetched successfully",
                 cartService.getCartSummary(userId)));
     }

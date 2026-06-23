@@ -14,6 +14,7 @@ import com.vibgyor.ecommerce.repository.UserRepo;
 import com.vibgyor.ecommerce.repository.WishlistItemRepo;
 import com.vibgyor.ecommerce.repository.WishlistRepo;
 import com.vibgyor.ecommerce.service.WishlistService;
+import com.vibgyor.ecommerce.util.UserLookupHelper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class WishlistServiceImpl implements WishlistService {
 
     private final WishlistRepo wishlistRepo;
     private final WishlistItemRepo wishlistItemRepo;
-    private final UserRepo userRepo;
+    private final UserLookupHelper userLookupHelper;
     private final ProductRepo productRepo;
     private final WishlistMapper wishlistMapper;
 
@@ -116,9 +117,7 @@ public class WishlistServiceImpl implements WishlistService {
     private Wishlist getOrCreateWishlist(Long userId) {
         return wishlistRepo.findByUserId(userId)
                 .orElseGet(() -> {
-                    User user = userRepo.findById(userId)
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "User not found with id: " + userId));
+                    User user = userLookupHelper.findById(userId);
                     Wishlist newWishlist = Wishlist.builder()
                             .user(user)
                             .build();

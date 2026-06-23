@@ -1,7 +1,6 @@
 package com.vibgyor.ecommerce.service.impl;
 
 import com.vibgyor.ecommerce.dto.request.address.AddressRequest;
-import com.vibgyor.ecommerce.dto.request.address.AddressUpdateRequest;
 import com.vibgyor.ecommerce.dto.request.address.DefaultAddressRequest;
 import com.vibgyor.ecommerce.dto.response.address.AddressResponse;
 import com.vibgyor.ecommerce.dto.response.address.AddressSummaryResponse;
@@ -9,10 +8,12 @@ import com.vibgyor.ecommerce.dto.response.address.DefaultAddressResponse;
 import com.vibgyor.ecommerce.entity.Address;
 import com.vibgyor.ecommerce.entity.User;
 import com.vibgyor.ecommerce.entity.enums.AddressType;
+import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
 import com.vibgyor.ecommerce.mapper.AddressMapper;
 import com.vibgyor.ecommerce.repository.AddressRepo;
 import com.vibgyor.ecommerce.repository.UserRepo;
 import com.vibgyor.ecommerce.service.AddressService;
+import com.vibgyor.ecommerce.util.UserLookupHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,11 @@ public class AddressServiceImpl implements AddressService {
 
     private final AddressRepo addressRepo;
     private final UserRepo userRepo;
+    private final UserLookupHelper userLookupHelper;
 
     @Override
     public AddressResponse createAddress(Long userId, AddressRequest request) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
 
         if (Boolean.TRUE.equals(request.getIsDefault())) {
             clearExistingDefaultAddress(user);
@@ -47,8 +49,8 @@ public class AddressServiceImpl implements AddressService {
     }
 
     @Override
-    public AddressResponse updateAddress(Long userId, Long addressId, AddressUpdateRequest request) {
-        User user = findUserById(userId);
+    public AddressResponse updateAddress(Long userId, Long addressId, AddressRequest request) {
+        User user = userLookupHelper.findById(userId);
         Address address = findUserAddressById(user, addressId);
 
         if (Boolean.TRUE.equals(request.getIsDefault())) {
@@ -68,7 +70,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public void deleteAddress(Long userId, Long addressId) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
         Address address = findUserAddressById(user, addressId);
 
         boolean wasDefault = Boolean.TRUE.equals(address.getIsDefault());
@@ -89,7 +91,7 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional(readOnly = true)
     public AddressResponse getAddressById(Long userId, Long addressId) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
         Address address = findUserAddressById(user, addressId);
         return AddressMapper.toResponse(address);
     }
@@ -97,7 +99,7 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional(readOnly = true)
     public List<AddressSummaryResponse> getUserAddresses(Long userId) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
 
         return addressRepo.findByUser(user)
                 .stream()
@@ -108,7 +110,7 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional(readOnly = true)
     public List<AddressSummaryResponse> getUserAddressesByType(Long userId, AddressType addressType) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
 
         return addressRepo.findByUserAndAddressType(user, addressType)
                 .stream()
@@ -119,17 +121,17 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional(readOnly = true)
     public AddressResponse getDefaultAddress(Long userId) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
 
         Address address = addressRepo.findByUserAndIsDefaultTrue(user)
-                .orElseThrow(() -> new RuntimeException("Default address not found for user id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Default address not found for user id: " + userId));
 
         return AddressMapper.toResponse(address);
     }
 
     @Override
     public DefaultAddressResponse setDefaultAddress(Long userId, DefaultAddressRequest request) {
-        User user = findUserById(userId);
+        User user = userLookupHelper.findById(userId);
         Address address = findUserAddressById(user, request.getAddressId());
 
         clearExistingDefaultAddress(user);
@@ -142,15 +144,12 @@ public class AddressServiceImpl implements AddressService {
 
     private User findUserById(Long userId) {
         return userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 
     private Address findUserAddressById(User user, Long addressId) {
-        return addressRepo.findByUser(user)
-                .stream()
-                .filter(address -> address.getId().equals(addressId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Address not found with id: " + addressId));
+        return addressRepo.findByIdAndUser(addressId, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found with id " + addressId));
     }
 
     private void clearExistingDefaultAddress(User user) {

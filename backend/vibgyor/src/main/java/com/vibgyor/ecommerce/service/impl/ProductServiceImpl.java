@@ -9,6 +9,8 @@ import com.vibgyor.ecommerce.dto.response.product.ProductResponse;
 import com.vibgyor.ecommerce.dto.response.product.ProductSummaryResponse;
 import com.vibgyor.ecommerce.entity.Category;
 import com.vibgyor.ecommerce.entity.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.vibgyor.ecommerce.entity.ProductImage;
 import com.vibgyor.ecommerce.entity.enums.Status;
 import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
@@ -88,34 +90,11 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductSummaryResponse> getAllProducts() {
-        return productRepo.findAll()
-                .stream()
-                .map(product -> ProductMapper.toSummaryResponse(
-                        product,
-                        productImageRepo.findByProductOrderByDisplayOrderAsc(product)
-                ))
-                .toList();
-    }
+    public Page<ProductSummaryResponse> getProductsByFilter(ProductFilterRequest filterRequest, Pageable pageable) {
+        Page<Product> productPage = productRepo.findAll(pageable);
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductSummaryResponse> getProductsByCategory(Long categoryId) {
-        return productRepo.findByCategoryId(categoryId)
-                .stream()
-                .map(product -> ProductMapper.toSummaryResponse(
-                        product,
-                        productImageRepo.findByProductOrderByDisplayOrderAsc(product)
-                ))
-                .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductSummaryResponse> getProductsByFilter(ProductFilterRequest filterRequest) {
-        List<Product> products = resolveProductsByBaseFilter(filterRequest);
-
-        return products.stream()
+        // Apply filters in memory
+        List<ProductSummaryResponse> filtered = productPage.getContent().stream()
                 .filter(product -> matchesKeyword(product, filterRequest))
                 .filter(product -> matchesPriceRange(product, filterRequest))
                 .filter(product -> matchesStockFilter(product, filterRequest))
@@ -124,6 +103,12 @@ public class ProductServiceImpl implements ProductService {
                         productImageRepo.findByProductOrderByDisplayOrderAsc(product)
                 ))
                 .toList();
+
+        return new org.springframework.data.domain.PageImpl<>(
+                filtered,
+                pageable,
+                productPage.getTotalElements()
+        );
     }
 
     // ── Validation helpers ────────────────────────────────────────────────

@@ -1,19 +1,21 @@
 package com.vibgyor.ecommerce.service.impl;
 
 import com.vibgyor.ecommerce.dto.request.cart.AddToCartRequest;
-import com.vibgyor.ecommerce.dto.request.cart.UpdateCartItemRequest;
 import com.vibgyor.ecommerce.dto.response.cart.CartResponse;
 import com.vibgyor.ecommerce.dto.response.cart.CartSummaryResponse;
 import com.vibgyor.ecommerce.entity.Cart;
 import com.vibgyor.ecommerce.entity.CartItem;
 import com.vibgyor.ecommerce.entity.Product;
 import com.vibgyor.ecommerce.entity.User;
+import com.vibgyor.ecommerce.exception.BadRequestException;
+import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
 import com.vibgyor.ecommerce.mapper.CartMapper;
 import com.vibgyor.ecommerce.repository.CartItemRepo;
 import com.vibgyor.ecommerce.repository.CartRepo;
 import com.vibgyor.ecommerce.repository.ProductRepo;
 import com.vibgyor.ecommerce.repository.UserRepo;
 import com.vibgyor.ecommerce.service.CartService;
+import com.vibgyor.ecommerce.util.UserLookupHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class CartServiceImpl implements CartService {
     private final CartItemRepo cartItemRepo;
     private final ProductRepo productRepo;
     private final UserRepo userRepo;
+    private final UserLookupHelper userLookupHelper;
 
     @Override
     @Transactional(readOnly = true)
@@ -35,7 +38,7 @@ public class CartServiceImpl implements CartService {
                 .orElse(null);
 
         if (cart == null) {
-            User user = findUserById(userId);
+            User user = userLookupHelper.findById(userId);
             Cart emptyCart = Cart.builder()
                     .user(user)
                     .build();
@@ -73,7 +76,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public CartResponse updateCartItem(Long userId, UpdateCartItemRequest request) {
+    public CartResponse updateCartItem(Long userId, AddToCartRequest request) {
         Cart cart = getOrCreateCart(userId);
         Product product = findProductById(request.getProductId());
 
@@ -81,7 +84,7 @@ public class CartServiceImpl implements CartService {
         validateStock(product, request.getQuantity());
 
         CartItem cartItem = cartItemRepo.findByCartAndProduct(cart, product)
-                .orElseThrow(() -> new RuntimeException("Cart item not found for product id: " + request.getProductId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found for product id: " + request.getProductId()));
 
         cartItem.setQuantity(request.getQuantity());
         cartItem.setUnitPrice(resolveUnitPrice(product));
@@ -109,7 +112,7 @@ public class CartServiceImpl implements CartService {
                 .orElse(null);
 
         if (cart == null) {
-            User user = findUserById(userId);
+            User user = userLookupHelper.findById(userId);
             Cart emptyCart = Cart.builder()
                     .user(user)
                     .build();
@@ -142,23 +145,23 @@ public class CartServiceImpl implements CartService {
 
     private User findUserById(Long userId) {
         return userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 
     private Product findProductById(Long productId) {
         return productRepo.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
     }
 
     private void validateQuantity(Integer quantity) {
         if (quantity == null || quantity < 1) {
-            throw new RuntimeException("Quantity must be at least 1");
+            throw new BadRequestException("Quantity must be at least 1");
         }
     }
 
     private void validateStock(Product product, Integer requestedQuantity) {
         if (product.getStockQuantity() == null || product.getStockQuantity() < requestedQuantity) {
-            throw new RuntimeException("Insufficient stock for product: " + product.getName());
+            throw new BadRequestException("Insufficient stock for product: " + product.getName());
         }
     }
 

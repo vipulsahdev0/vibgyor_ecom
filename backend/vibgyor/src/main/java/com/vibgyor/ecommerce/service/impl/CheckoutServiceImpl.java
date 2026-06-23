@@ -3,7 +3,10 @@ package com.vibgyor.ecommerce.service.impl;
 import com.vibgyor.ecommerce.dto.response.checkout.CheckoutItemResponse;
 import com.vibgyor.ecommerce.dto.response.checkout.CheckoutSummaryResponse;
 import com.vibgyor.ecommerce.entity.*;
+import com.vibgyor.ecommerce.exception.BadRequestException;
+import com.vibgyor.ecommerce.exception.ResourceNotFoundException;
 import com.vibgyor.ecommerce.repository.*;
+import com.vibgyor.ecommerce.util.ProductImageUtil;
 import com.vibgyor.ecommerce.service.CheckoutService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,10 +26,10 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Override
     public CheckoutSummaryResponse getCheckoutSummary(Long userId) {
         Cart cart = cartRepo.findByUserIdWithItems(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found for user " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found for user " + userId));
 
         if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
-            throw new RuntimeException("Cart is empty, cannot proceed to checkout");
+            throw new BadRequestException("Cart is empty, cannot proceed to checkout");
         }
 
         List<CheckoutItemResponse> items = cart.getCartItems().stream()
@@ -57,25 +60,17 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .build();
     }
 
+
     private CheckoutItemResponse toCheckoutItem(CartItem cartItem) {
         Product product = cartItem.getProduct();
-        String imageUrl = null;
-        if (product != null && product.getImages() != null && !product.getImages().isEmpty()) {
-            imageUrl = product.getImages().stream()
-                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                    .findFirst()
-                    .orElse(product.getImages().iterator().next())
-                    .getImageUrl();
-        }
 
         return CheckoutItemResponse.builder()
                 .productId(product != null ? product.getId() : null)
                 .productName(product != null ? product.getName() : null)
-                .productImageUrl(imageUrl)
+                .productImageUrl(ProductImageUtil.extractPrimaryImageUrl(product))
                 .quantity(cartItem.getQuantity())
                 .unitPrice(cartItem.getUnitPrice())
-                .lineTotal(cartItem.getUnitPrice()
-                        .multiply(BigDecimal.valueOf(cartItem.getQuantity())))
+                .lineTotal(cartItem.getUnitPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())))
                 .build();
     }
 }

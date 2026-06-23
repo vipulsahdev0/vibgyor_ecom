@@ -1,7 +1,6 @@
 package com.vibgyor.ecommerce.service;
 
 import com.vibgyor.ecommerce.dto.request.address.AddressRequest;
-import com.vibgyor.ecommerce.dto.request.address.AddressUpdateRequest;
 import com.vibgyor.ecommerce.dto.request.address.DefaultAddressRequest;
 import com.vibgyor.ecommerce.dto.response.address.AddressResponse;
 import com.vibgyor.ecommerce.dto.response.address.AddressSummaryResponse;
@@ -14,7 +13,7 @@ public interface AddressService {
 
     AddressResponse createAddress(Long userId, AddressRequest request);
 
-    AddressResponse updateAddress(Long userId, Long addressId, AddressUpdateRequest request);
+    AddressResponse updateAddress(Long userId, Long addressId, AddressRequest request);
 
     void deleteAddress(Long userId, Long addressId);
 

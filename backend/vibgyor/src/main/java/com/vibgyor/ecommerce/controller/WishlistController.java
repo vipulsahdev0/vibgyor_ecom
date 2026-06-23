@@ -4,6 +4,7 @@ import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.wishlist.AddToWishlistRequest;
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistResponse;
 import com.vibgyor.ecommerce.dto.response.wishlist.WishlistSummaryResponse;
+import com.vibgyor.ecommerce.security.SecurityOwnershipValidator;
 import com.vibgyor.ecommerce.service.WishlistService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +17,12 @@ import org.springframework.web.bind.annotation.*;
 public class WishlistController {
 
     private final WishlistService wishlistService;
+    private final SecurityOwnershipValidator ownershipValidator;
 
     @GetMapping
     public ResponseEntity<ApiResponse<WishlistResponse>> getWishlistByUserId(
             @PathVariable Long userId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Wishlist fetched successfully",
                 wishlistService.getWishlistByUserId(userId)));
     }
@@ -28,6 +31,7 @@ public class WishlistController {
     public ResponseEntity<ApiResponse<WishlistResponse>> addToWishlist(
             @PathVariable Long userId,
             @Valid @RequestBody AddToWishlistRequest request) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Product added to wishlist",
                 wishlistService.addToWishlist(userId, request)));
     }
@@ -36,6 +40,7 @@ public class WishlistController {
     public ResponseEntity<ApiResponse<WishlistResponse>> removeFromWishlist(
             @PathVariable Long userId,
             @PathVariable Long productId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Product removed from wishlist",
                 wishlistService.removeFromWishlist(userId, productId)));
     }
@@ -43,6 +48,7 @@ public class WishlistController {
     @DeleteMapping
     public ResponseEntity<ApiResponse<WishlistSummaryResponse>> clearWishlist(
             @PathVariable Long userId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Wishlist cleared successfully",
                 wishlistService.clearWishlist(userId)));
     }
@@ -51,6 +57,7 @@ public class WishlistController {
     public ResponseEntity<ApiResponse<Boolean>> isProductInWishlist(
             @PathVariable Long userId,
             @PathVariable Long productId) {
+        ownershipValidator.validateOwnerOrAdmin(userId);
         return ResponseEntity.ok(ApiResponse.ok("Check completed",
                 wishlistService.isProductInWishlist(userId, productId)));
     }

@@ -1,9 +1,26 @@
-import { Loader2, ArrowRight, ShoppingBag, Tag, Truck, Clock } from "lucide-react";
+import {
+  Loader2,
+  ArrowRight,
+  ShoppingBag,
+  Tag,
+  Truck,
+  Clock3,
+  ShieldCheck,
+  Package,
+} from "lucide-react";
 
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(amount ?? 0));
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+  }).format(Number(amount ?? 0));
 
-export default function OrderSummary({ cart, onCheckout, loading, disabled = false }) {
+export default function OrderSummary({
+  cart,
+  onCheckout,
+  loading,
+  disabled = false,
+}) {
   const items = cart?.items ?? [];
   const subtotal = Number(cart?.subtotal ?? 0);
   const discount = Number(cart?.discountTotal ?? 0);
@@ -11,91 +28,127 @@ export default function OrderSummary({ cart, onCheckout, loading, disabled = fal
   const hasDiscount = discount > 0;
 
   return (
-    <aside className="sticky top-24 flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-
-      {/* Header */}
-      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-        <ShoppingBag className="h-4 w-4 text-indigo-500" />
-        <h2 className="text-sm font-bold text-slate-900">Order Summary</h2>
+    <aside className="sticky top-24 flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <ShoppingBag className="h-4 w-4 text-indigo-500" />
+          <h2 className="text-sm font-bold text-slate-900">Order Summary</h2>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">
+          {items.length} {items.length === 1 ? "item" : "items"} ready for checkout
+        </p>
       </div>
 
-      {/* Items list */}
-      <div className="max-h-52 overflow-y-auto divide-y divide-slate-50 px-5">
+      <div className="max-h-56 divide-y divide-slate-50 overflow-y-auto px-5">
         {items.map((item) => (
-          <div key={item.cartItemId ?? item.productId}
-            className="flex items-center gap-3 py-3">
-            {item.productImageUrl && (
+          <div
+            key={item.cartItemId ?? item.productId}
+            className="flex items-center gap-3 py-3"
+          >
+            {item.productImageUrl ? (
               <img
                 src={item.productImageUrl}
                 alt={item.productName}
-                width={40} height={40}
+                width={40}
+                height={40}
                 loading="lazy"
-                className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 object-cover"
+                className="h-10 w-10 shrink-0 rounded-xl border border-slate-100 object-cover"
               />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                <Package className="h-4 w-4" />
+              </div>
             )}
+
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-slate-800">{item.productName}</p>
-              <p className="text-[11px] text-slate-400">Qty {item.quantity}</p>
+              <p className="truncate text-xs font-semibold text-slate-800">
+                {item.productName || "Product"}
+              </p>
+              <p className="text-[11px] text-slate-400">Qty {item.quantity ?? 0}</p>
             </div>
-            <p className="shrink-0 text-xs font-bold text-slate-700 tabular-nums">
+
+            <p className="shrink-0 text-xs font-bold tabular-nums text-slate-700">
               {formatCurrency(item.lineTotal ?? 0)}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Totals */}
-      <div className="space-y-2.5 border-t border-slate-100 px-5 py-4 text-sm">
-        <div className="flex justify-between text-slate-500">
+      <div className="space-y-3 border-t border-slate-100 px-5 py-4 text-sm">
+        <div className="flex items-center justify-between text-slate-500">
           <span>Subtotal</span>
-          <span className="font-semibold text-slate-800 tabular-nums">{formatCurrency(subtotal)}</span>
+          <span className="font-semibold tabular-nums text-slate-800">
+            {formatCurrency(subtotal)}
+          </span>
         </div>
 
         {hasDiscount && (
-          <div className="flex justify-between text-slate-500">
-            <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" /> Discount</span>
-            <span className="font-semibold text-emerald-600 tabular-nums">-{formatCurrency(discount)}</span>
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="flex items-center gap-1">
+              <Tag className="h-3.5 w-3.5" />
+              Discount
+            </span>
+            <span className="font-semibold tabular-nums text-emerald-600">
+              -{formatCurrency(discount)}
+            </span>
           </div>
         )}
 
-        <div className="flex justify-between text-slate-500">
-          <span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" /> Delivery</span>
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="flex items-center gap-1">
+            <Truck className="h-3.5 w-3.5" />
+            Delivery
+          </span>
           <span className="font-semibold text-emerald-600">Free</span>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-1 text-slate-500">
-            <Clock className="h-3.5 w-3.5" /> Estimated Delivery
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="flex items-center gap-1">
+            <Clock3 className="h-3.5 w-3.5" />
+            Estimated delivery
           </span>
-          <span >Tomorrow - 3 Days </span>
+          <span className="text-xs font-medium text-slate-700">Tomorrow - 3 days</span>
         </div>
 
         <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
           <span className="font-bold text-slate-900">Total</span>
-          <span className="text-lg font-black text-indigo-600 tabular-nums">{formatCurrency(total)}</span>
+          <span className="text-lg font-black tabular-nums text-indigo-600">
+            {formatCurrency(total)}
+          </span>
         </div>
 
         {hasDiscount && (
           <p className="text-right text-[11px] font-medium text-emerald-600">
-            You save {formatCurrency(discount)} on this order 🎉
+            You save {formatCurrency(discount)} on this order
           </p>
         )}
       </div>
 
-      {/* CTA */}
       <div className="border-t border-slate-100 px-5 py-4">
-        <p className="flex item-center justify-center gap-2 mb-3 text-xs text-dark-400">Secure Checkout & 100% Safe Payments</p>
+        <p className="mb-3 flex items-center justify-center gap-2 text-xs text-slate-400">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+          Secure checkout and safe payments
+        </p>
+
         <button
           type="button"
           onClick={onCheckout}
           disabled={loading || disabled}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading
-            ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</>
-            : <>Place Order <ArrowRight className="h-4 w-4" /></>
-          }
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              Place Order
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
         </button>
+
         <p className="mt-2.5 text-center text-[11px] text-slate-400">
           By placing your order, you agree to our terms of service.
         </p>

@@ -1,7 +1,6 @@
 package com.vibgyor.ecommerce.mapper;
 
 import com.vibgyor.ecommerce.dto.request.category.CategoryRequest;
-import com.vibgyor.ecommerce.dto.request.category.CategoryUpdateRequest;
 import com.vibgyor.ecommerce.dto.response.category.CategoryResponse;
 import com.vibgyor.ecommerce.dto.response.category.CategoryStatusResponse;
 import com.vibgyor.ecommerce.dto.response.category.CategorySummaryResponse;
@@ -26,7 +25,7 @@ public class CategoryMapper {
                 .build();
     }
 
-    public static void updateEntity(Category category, CategoryUpdateRequest request) {
+    public static void updateEntity(Category category, CategoryRequest request) {
         if (category == null || request == null) {
             return;
         }

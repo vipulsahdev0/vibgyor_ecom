@@ -1,4 +1,5 @@
 package com.vibgyor.ecommerce.mapper;
+import com.vibgyor.ecommerce.util.ProductImageUtil;
 
 import com.vibgyor.ecommerce.dto.response.cart.CartItemResponse;
 import com.vibgyor.ecommerce.dto.response.cart.CartResponse;
@@ -30,7 +31,7 @@ public class CartMapper {
                 .cartItemId(cartItem.getId())
                 .productId(product != null ? product.getId() : null)
                 .productName(product != null ? product.getName() : null)
-                .productImageUrl(extractPrimaryImageUrl(product))
+                .productImageUrl(ProductImageUtil.extractPrimaryImageUrl(product))
                 .quantity(cartItem.getQuantity())
                 .unitPrice(cartItem.getUnitPrice())
                 .lineTotal(calculateLineTotal(cartItem))

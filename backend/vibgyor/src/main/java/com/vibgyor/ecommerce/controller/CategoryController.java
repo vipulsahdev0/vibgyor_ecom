@@ -3,7 +3,6 @@ package com.vibgyor.ecommerce.controller;
 import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.category.CategoryRequest;
 import com.vibgyor.ecommerce.dto.request.category.CategoryStatusUpdateRequest;
-import com.vibgyor.ecommerce.dto.request.category.CategoryUpdateRequest;
 import com.vibgyor.ecommerce.dto.response.category.CategoryResponse;
 import com.vibgyor.ecommerce.dto.response.category.CategoryStatusResponse;
 import com.vibgyor.ecommerce.dto.response.category.CategorySummaryResponse;
@@ -58,7 +57,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
             @PathVariable Long id,
-            @Valid @RequestBody CategoryUpdateRequest request) {
+            @Valid @RequestBody CategoryRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Category updated successfully",
                 categoryService.updateCategory(id, request)));
     }

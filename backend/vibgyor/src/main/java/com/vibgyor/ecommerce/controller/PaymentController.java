@@ -2,7 +2,6 @@ package com.vibgyor.ecommerce.controller;
 
 import com.vibgyor.ecommerce.dto.common.ApiResponse;
 import com.vibgyor.ecommerce.dto.request.payment.CreatePaymentRequest;
-import com.vibgyor.ecommerce.dto.request.payment.PaymentRequest;
 import com.vibgyor.ecommerce.dto.request.payment.PaymentStatusUpdateRequest;
 import com.vibgyor.ecommerce.dto.request.payment.VerifyPaymentRequest;
 import com.vibgyor.ecommerce.dto.response.payment.PaymentResponse;
@@ -29,68 +28,76 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    // ─── User-facing endpoints ────────────────────────────────────────────────
-
     @PostMapping
     public ResponseEntity<ApiResponse<PaymentResponse>> recordPayment(
-            @Valid @RequestBody PaymentRequest request,
+            @Valid @RequestBody CreatePaymentRequest request,
             @AuthenticationPrincipal CustomUserDetails principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("Payment recorded successfully",
-                        paymentService.recordPayment(request, principal.getUserId())));
+                .body(ApiResponse.ok(
+                        "Payment recorded successfully",
+                        paymentService.recordPayment(request, principal.getUserId())
+                ));
     }
-
-    @GetMapping("/{paymentId}")
-    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentById(
-            @PathVariable Long paymentId,
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(ApiResponse.ok("Payment fetched successfully",
-                paymentService.getPaymentById(paymentId, principal.getUserId())));
-    }
-
-    @GetMapping("/order/{orderId}")
-    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByOrderId(
-            @PathVariable Long orderId,
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(ApiResponse.ok("Payment fetched successfully",
-                paymentService.getPaymentByOrderId(orderId, principal.getUserId())));
-    }
-
-    @GetMapping("/transaction/{transactionId}")
-    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByTransactionId(
-            @PathVariable String transactionId) {
-        return ResponseEntity.ok(ApiResponse.ok("Payment fetched successfully",
-                paymentService.getPaymentByTransactionId(transactionId)));
-    }
-
-    // ─── New checkout lifecycle endpoints ─────────────────────────────────────
 
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<PaymentResponse>> createPayment(
             @Valid @RequestBody CreatePaymentRequest request,
             @AuthenticationPrincipal CustomUserDetails principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("Payment created successfully",
-                        paymentService.createPayment(request, principal.getUserId())));
+                .body(ApiResponse.ok(
+                        "Payment created successfully",
+                        paymentService.createPayment(request, principal.getUserId())
+                ));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<ApiResponse<PaymentResponse>> verifyPayment(
             @Valid @RequestBody VerifyPaymentRequest request,
             @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(ApiResponse.ok("Payment verified successfully",
-                paymentService.verifyAndUpdatePayment(request, principal.getUserId())));
+        return ResponseEntity.ok(ApiResponse.ok(
+                "Payment verified successfully",
+                paymentService.verifyAndUpdatePayment(request, principal.getUserId())
+        ));
     }
 
-    // ─── Admin-only endpoints ─────────────────────────────────────────────────
+    @GetMapping("/{paymentId}")
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentById(
+            @PathVariable Long paymentId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                "Payment fetched successfully",
+                paymentService.getPaymentById(paymentId, principal.getUserId())
+        ));
+    }
+
+    @GetMapping("/order/{orderId}")
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByOrderId(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                "Payment fetched successfully",
+                paymentService.getPaymentByOrderId(orderId, principal.getUserId())
+        ));
+    }
+
+    @GetMapping("/transaction/{transactionId}")
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByTransactionId(
+            @PathVariable String transactionId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                "Payment fetched successfully",
+                paymentService.getPaymentByTransactionId(transactionId)
+        ));
+    }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{paymentId}/status")
     public ResponseEntity<ApiResponse<PaymentStatusResponse>> updatePaymentStatus(
             @PathVariable Long paymentId,
             @Valid @RequestBody PaymentStatusUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("Payment status updated successfully",
-                paymentService.updatePaymentStatus(paymentId, request)));
+        return ResponseEntity.ok(ApiResponse.ok(
+                "Payment status updated successfully",
+                paymentService.updatePaymentStatus(paymentId, request)
+        ));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

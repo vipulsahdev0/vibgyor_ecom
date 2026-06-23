@@ -1,7 +1,6 @@
 package com.vibgyor.ecommerce.service;
 
 import com.vibgyor.ecommerce.dto.request.cart.AddToCartRequest;
-import com.vibgyor.ecommerce.dto.request.cart.UpdateCartItemRequest;
 import com.vibgyor.ecommerce.dto.response.cart.CartResponse;
 import com.vibgyor.ecommerce.dto.response.cart.CartSummaryResponse;
 
@@ -11,7 +10,7 @@ public interface CartService {
 
     CartResponse addToCart(Long userId, AddToCartRequest request);
 
-    CartResponse updateCartItem(Long userId, UpdateCartItemRequest request);
+    CartResponse updateCartItem(Long userId, AddToCartRequest request);
 
     CartResponse removeFromCart(Long userId, Long productId);
 

@@ -84,3 +84,8 @@ export const clearWishlist = async (
 
   return unwrap(response);
 };
+
+export const isProductInWishlist = async (userId, productId) => {
+  const response = await api.get(`/api/users/${userId}/wishlist/items/${productId}/exists`);
+  return response?.data?.data ?? response?.data ?? false;
+};

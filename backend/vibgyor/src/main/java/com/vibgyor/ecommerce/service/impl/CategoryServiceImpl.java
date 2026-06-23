@@ -2,7 +2,6 @@ package com.vibgyor.ecommerce.service.impl;
 
 import com.vibgyor.ecommerce.dto.request.category.CategoryRequest;
 import com.vibgyor.ecommerce.dto.request.category.CategoryStatusUpdateRequest;
-import com.vibgyor.ecommerce.dto.request.category.CategoryUpdateRequest;
 import com.vibgyor.ecommerce.dto.response.category.CategoryResponse;
 import com.vibgyor.ecommerce.dto.response.category.CategoryStatusResponse;
 import com.vibgyor.ecommerce.dto.response.category.CategorySummaryResponse;
@@ -72,13 +71,13 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request) {
+    public CategoryResponse updateCategory(Long id, CategoryRequest request) {
         Category category = findCategoryById(id);
 
         categoryRepo.findByNameIgnoreCase(request.getName())
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> {
-                    throw new RuntimeException("Another category already exists with name: " + request.getName());
+                    throw new DuplicateResourceException("Another category already exists with name " + request.getName());
                 });
 
         CategoryMapper.updateEntity(category, request);

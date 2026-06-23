@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, MapPin, ShieldCheck, Truck } from "lucide-react";
 import toast from "react-hot-toast";
 import useAuth from "../../hooks/useAuth";
 import useCart from "../../hooks/useCart";
@@ -17,7 +17,7 @@ const PAYMENT_METHOD_MAP = {
   card: "CREDIT_CARD",
 };
 
-const getApiPaymentMethod = (m) => PAYMENT_METHOD_MAP[m] || null;
+const getApiPaymentMethod = (method) => PAYMENT_METHOD_MAP[method] || null;
 
 function AddressSkeleton() {
   return (
@@ -44,7 +44,7 @@ function AddressSkeleton() {
 export default function Checkout() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { cart, loading: cartLoading, fetchBackendCart, clearAll } = useCart();
+  const { cart, loading: cartLoading, clearAll } = useCart();
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -53,19 +53,27 @@ export default function Checkout() {
   const [addressLoading, setAddressLoading] = useState(true);
 
   const loadAddresses = useCallback(async () => {
-    if (!user?.userId) return;
+    if (!user?.userId) {
+      setAddresses([]);
+      setSelectedAddress(null);
+      setAddressLoading(false);
+      return;
+    }
 
     try {
       setAddressLoading(true);
       const data = await getUserAddresses(user.userId);
       const list = Array.isArray(data) ? data : [];
+
       setAddresses(list);
 
-      const def = list.find((a) => a.isDefault) || list[0];
-      setSelectedAddress(def?.id ?? null);
+      const defaultAddress = list.find((a) => a.isDefault) || list[0] || null;
+      setSelectedAddress(defaultAddress?.id ?? null);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load addresses");
+      setAddresses([]);
+      setSelectedAddress(null);
+      toast.error(err?.response?.data?.message || "Failed to load addresses");
     } finally {
       setAddressLoading(false);
     }
@@ -75,18 +83,23 @@ export default function Checkout() {
     loadAddresses();
   }, [loadAddresses]);
 
-  const canCheckout = useMemo(
-    () =>
-      Boolean(
-        user?.userId &&
-        cart?.items?.length &&
+  const canCheckout = useMemo(() => {
+    return Boolean(
+      user?.userId &&
+        cart?.items?.length > 0 &&
         selectedAddress &&
         selectedMethod &&
         !loading &&
         !cartLoading
-      ),
-    [user?.userId, cart?.items, selectedAddress, selectedMethod, loading, cartLoading]
-  );
+    );
+  }, [
+    user?.userId,
+    cart?.items?.length,
+    selectedAddress,
+    selectedMethod,
+    loading,
+    cartLoading,
+  ]);
 
   const handleCheckout = async () => {
     if (loading) return;
@@ -108,6 +121,7 @@ export default function Checkout() {
     }
 
     const apiPaymentMethod = getApiPaymentMethod(selectedMethod);
+
     if (!apiPaymentMethod) {
       toast.error("Invalid payment method selected");
       return;
@@ -132,20 +146,25 @@ export default function Checkout() {
         try {
           payment = await processPayment({
             orderId: order.id,
-            amount: Number(order.totalAmount),
+            amount: Number(order.totalAmount || 0),
             paymentMethod: apiPaymentMethod,
           });
         } catch (err) {
-          const msg = err?.response?.data?.message ?? "";
+          const message =
+            err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            err?.message ||
+            "";
 
-          if (msg.toLowerCase().includes("payment record already exists")) {
+          if (message.toLowerCase().includes("payment record already exists")) {
+            await clearAll({ silent: true });
             toast.success("Payment already recorded");
-            navigate(`/account/orders`);
+            navigate("/account/orders", { replace: true });
             return;
           }
 
-          toast.error("Order was created successfully, but payment recording failed.");
-          navigate(`/account/orders`);
+          toast.error("Order created, but payment recording failed.");
+          navigate("/account/orders", { replace: true });
           return;
         }
       }
@@ -153,40 +172,37 @@ export default function Checkout() {
       const resolvedPaymentStatus =
         payment?.paymentStatus || order?.paymentStatus || "PENDING";
 
+      await clearAll({ silent: true });
+
       toast.success(
         selectedMethod === "cod"
           ? "Order placed successfully"
           : "Order placed. Payment is being processed."
       );
 
-      if (typeof fetchBackendCart === "function") {
-        await fetchBackendCart();
-      } else if (typeof clearAll === "function") {
-        await clearAll();
-      }
-
       navigate(`/account/payment-success/${order.id}`, {
         replace: true,
         state: {
           orderId: order.id,
-          orderNumber: order.orderNumber,
+          orderNumber: order.orderNumber ?? null,
           paymentMethod: apiPaymentMethod,
-          totalAmount: Number(order.totalAmount),
+          totalAmount: Number(order.totalAmount || 0),
           paymentStatus: resolvedPaymentStatus,
         },
       });
     } catch (err) {
       console.error("Checkout error:", err);
-      const details = err?.response?.data?.details;
 
-      toast.error(
-        details?.length
+      const details = err?.response?.data?.details;
+      const message =
+        Array.isArray(details) && details.length
           ? details.join(", ")
           : err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.message ||
-          "Checkout failed"
-      );
+            err?.response?.data?.error ||
+            err?.message ||
+            "Checkout failed";
+
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -217,12 +233,14 @@ export default function Checkout() {
         <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 text-slate-400">
           <MapPin className="h-9 w-9" />
         </div>
+
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Your cart is empty</h1>
           <p className="mt-2 text-sm text-slate-500">
             Add items before proceeding to checkout.
           </p>
         </div>
+
         <Link
           to="/products"
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
@@ -235,21 +253,35 @@ export default function Checkout() {
 
   return (
     <section className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Checkout
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Complete your order securely.
-        </p>
+      <div className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Checkout
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Complete your order securely and review everything before placing it.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            Secure checkout
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5">
+            <Truck className="h-3.5 w-3.5 text-indigo-600" />
+            Fast delivery
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
-          <div>
+          <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-base font-bold text-slate-900">
               Delivery Address
             </h2>
+
             {addressLoading ? (
               <AddressSkeleton />
             ) : addresses.length > 0 ? (
@@ -259,7 +291,7 @@ export default function Checkout() {
                 setSelectedAddress={setSelectedAddress}
               />
             ) : (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center">
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
                 <MapPin className="h-8 w-8 text-slate-300" />
                 <div>
                   <p className="text-sm font-semibold text-slate-800">
@@ -271,7 +303,7 @@ export default function Checkout() {
                 </div>
                 <Link
                   to="/account/profile"
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
                 >
                   Go to Profile
                 </Link>
@@ -279,7 +311,7 @@ export default function Checkout() {
             )}
           </div>
 
-          <div>
+          <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-base font-bold text-slate-900">
               Payment Method
             </h2>

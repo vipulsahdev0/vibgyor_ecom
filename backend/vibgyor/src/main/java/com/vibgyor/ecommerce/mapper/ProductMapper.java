@@ -129,6 +129,11 @@ public class ProductMapper {
         return ProductSummaryResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
+                .description(
+                        product.getDescription() != null && !product.getDescription().trim().isEmpty()
+                                ? product.getDescription().trim()
+                                : null
+                )
                 .price(product.getPrice())
                 .discountedPrice(product.getDiscountedPrice())
                 .finalPrice(calculateFinalPrice(product))

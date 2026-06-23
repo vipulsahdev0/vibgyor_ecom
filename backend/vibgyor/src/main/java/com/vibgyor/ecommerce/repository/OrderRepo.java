@@ -1,7 +1,6 @@
 package com.vibgyor.ecommerce.repository;
 
 import com.vibgyor.ecommerce.entity.Order;
-import com.vibgyor.ecommerce.entity.User;
 import com.vibgyor.ecommerce.entity.enums.OrderStatus;
 import com.vibgyor.ecommerce.entity.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,8 +18,6 @@ public interface OrderRepo extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.product WHERE o.user.id = :userId")
     List<Order> findByUserIdWithItems(@Param("userId") Long userId);
-
-    List<Order> findByUser(User user);
 
     List<Order> findByUserId(Long userId);
 
